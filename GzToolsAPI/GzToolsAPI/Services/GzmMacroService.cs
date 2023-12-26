@@ -125,7 +125,7 @@ namespace GzToolsAPI.Services
                 var addRequest = request.Inputs[i];
                 if (addRequest.frameIndex >= 0 && addRequest.frameIndex < gzMacro.n_input)
                 {
-                    addRequest.frameIndex -= frameIndexes.Take(i).Count(index => index < addRequest.frameIndex);
+                    addRequest.frameIndex += frameIndexes.Take(i).Count(index => index < addRequest.frameIndex);
                     List<MovieInput> startingInputs = inputSpan.Slice(0, addRequest.frameIndex).ToArray().ToList();
                     List<MovieInput> endingInputs = inputSpan.Slice(addRequest.frameIndex + 1, (int)gzMacro.n_input).ToArray().ToList();
                     List<MovieInput> finalList =
