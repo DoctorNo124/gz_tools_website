@@ -32,6 +32,33 @@ namespace GzToolsAPI.Controllers
             var outputBytes = _service.CatMacro(bytes1, bytes2);
             return File(outputBytes, "application/octet-stream");
         }
+
+        [HttpPost]
+        [Route("modify_inputs")]
+        public FileContentResult ModifyInputsGzMacro([FromBody] UpdateInputsRequest request)
+        {
+            var outputBytes = _service.ModifyInputs(request);
+            return File(outputBytes, "application/octet-stream");
+        }
+
+        [HttpPost]
+        [Route("add_inputs")]
+        public FileContentResult AddInputsGzMacro([FromBody] UpdateInputsRequest request)
+        {
+            var outputBytes = _service.AddInputs(request);
+            return File(outputBytes, "application/octet-stream");
+        }
+
+        [HttpPost]
+        [Route("delete_inputs")]
+        public FileContentResult DeleteInputsGzMacro([FromBody] DeleteInputsRequest request)
+        {
+            var outputBytes = _service.DeleteInputs(request);
+            return File(outputBytes, "application/octet-stream");
+        }
+
+
     }
+
 
 }

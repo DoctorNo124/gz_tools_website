@@ -13,4 +13,5 @@ extern "C" {
     #include "gzm.h"
     GZMACROSDLL_API int set_gzmacro(uint8_t* data, gz_macro* gzm, size_t size);
     GZMACROSDLL_API int cat_gzmacro(uint8_t* gzmData1, size_t gzmDataSize1, uint8_t* gzmData2, size_t gzmDataSize2, file_output fileOutput);
+    GZMACROSDLL_API int update_inputs_gzmacro(gz_macro* gzm, struct movie_input* input, file_output fileOutput);
 };

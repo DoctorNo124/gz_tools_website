@@ -726,3 +726,12 @@ gzm_print_seeds(const struct gz_macro* gzm)
     for (int i = 0; i < gzm->n_seed; i++)
         printf("  frame: %u, old: %08x, new: %08x\n", seeds[i].frame_idx, seeds[i].old_seed, seeds[i].new_seed);
 }
+
+int
+gzm_update_inputs(struct gz_macro* gzm, struct movie_input* input)
+{
+    gzm->input = malloc(gzm->n_input * sizeof(struct movie_input));
+    if (input != NULL) {
+        memcpy(&gzm->input[0], input, gzm->n_input * sizeof(struct movie_input));
+    }
+}
