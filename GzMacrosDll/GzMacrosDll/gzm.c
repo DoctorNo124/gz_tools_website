@@ -93,7 +93,7 @@ gzm_read(struct gz_macro* gzm, uint8_t* data, size_t size)
     gzm_serial_read(gzm->input_start.x);
     gzm_serial_read(gzm->input_start.y);
 
-    gzm->input = malloc(gzm->n_input * sizeof(struct movie_input));
+    gzm->input = (struct movie_input*)malloc(gzm->n_input * sizeof(struct movie_input));
     for (i = 0; i < gzm->n_input; ++i)
     {
         struct movie_input* input = &gzm->input[i];
@@ -104,7 +104,7 @@ gzm_read(struct gz_macro* gzm, uint8_t* data, size_t size)
         gzm_serial_read(input->pad_delta);
     }
 
-    gzm->seed = malloc(gzm->n_seed * sizeof(struct movie_seed));
+    gzm->seed = (struct movie_seed*)malloc(gzm->n_seed * sizeof(struct movie_seed));
     for (i = 0; i < gzm->n_seed; ++i)
     {
         struct movie_seed* seed = &gzm->seed[i];
@@ -118,7 +118,7 @@ gzm_read(struct gz_macro* gzm, uint8_t* data, size_t size)
     gzm_serial_read(gzm->n_oca_sync);
     gzm_serial_read(gzm->n_room_load);
 
-    gzm->oca_input = malloc(gzm->n_oca_input * sizeof(struct movie_oca_input));
+    gzm->oca_input = (struct movie_oca_input*)malloc(gzm->n_oca_input * sizeof(struct movie_oca_input));
     for (i = 0; i < gzm->n_oca_input; ++i)
     {
         struct movie_oca_input* oca_input = &gzm->oca_input[i];
@@ -129,7 +129,7 @@ gzm_read(struct gz_macro* gzm, uint8_t* data, size_t size)
         gzm_serial_read(oca_input->adjusted_y);
     }
 
-    gzm->oca_sync = malloc(gzm->n_oca_sync * sizeof(struct movie_oca_sync));
+    gzm->oca_sync = (struct movie_oca_sync*)malloc(gzm->n_oca_sync * sizeof(struct movie_oca_sync));
     for (i = 0; i < gzm->n_oca_sync; ++i)
     {
         struct movie_oca_sync* oca_sync = &gzm->oca_sync[i];
@@ -138,7 +138,7 @@ gzm_read(struct gz_macro* gzm, uint8_t* data, size_t size)
         gzm_serial_read(oca_sync->audio_frames);
     }
 
-    gzm->room_load = malloc(gzm->n_room_load * sizeof(struct movie_room_load));
+    gzm->room_load = (struct movie_room_load*)malloc(gzm->n_room_load * sizeof(struct movie_room_load));
     for (i = 0; i < gzm->n_room_load; ++i)
     {
         struct movie_room_load* room_load = &gzm->room_load[i];
@@ -158,7 +158,7 @@ gzm_write(const struct gz_macro* gzm, file_output* output)
 {
     size_t i;
     size_t size = GZM_SERIAL_SIZE(gzm);
-    uint8_t* data = malloc(size);
+    uint8_t* data = (uint8_t*)malloc(size);
     uint8_t* p = &data[0];
     uint8_t* end = &data[size];
 
@@ -275,7 +275,7 @@ gzm_trim(struct gz_macro* gzm, uint32_t end)
 
     // Trim input
     gzm->n_input = end;
-    gzm->input = realloc(gzm->input, gzm->n_input * sizeof(struct movie_input));
+    gzm->input = (struct movie_input*)realloc(gzm->input, gzm->n_input * sizeof(struct movie_input));
 
     // Trim seed
     size_t n_seed = 0;
@@ -285,7 +285,7 @@ gzm_trim(struct gz_macro* gzm, uint32_t end)
             n_seed++;
     }
     gzm->n_seed = n_seed;
-    gzm->seed = realloc(gzm->seed, gzm->n_seed * sizeof(struct movie_seed));
+    gzm->seed = (struct movie_seed*)realloc(gzm->seed, gzm->n_seed * sizeof(struct movie_seed));
 
     // Trim oca input
     size_t n_oca_input = 0;
@@ -295,7 +295,7 @@ gzm_trim(struct gz_macro* gzm, uint32_t end)
             n_oca_input++;
     }
     gzm->n_oca_input = n_oca_input;
-    gzm->oca_input = realloc(gzm->oca_input, gzm->n_oca_input * sizeof(struct movie_oca_input));
+    gzm->oca_input = (struct movie_oca_input*)realloc(gzm->oca_input, gzm->n_oca_input * sizeof(struct movie_oca_input));
 
     // Trim oca sync
     size_t n_oca_sync = 0;
@@ -305,7 +305,7 @@ gzm_trim(struct gz_macro* gzm, uint32_t end)
             n_oca_sync++;
     }
     gzm->n_oca_sync = n_oca_sync;
-    gzm->oca_sync = realloc(gzm->oca_sync, gzm->n_oca_sync * sizeof(struct movie_oca_sync));
+    gzm->oca_sync = (struct movie_oca_sync*)realloc(gzm->oca_sync, gzm->n_oca_sync * sizeof(struct movie_oca_sync));
 
     // Trim room load
     size_t n_room_load = 0;
@@ -315,7 +315,7 @@ gzm_trim(struct gz_macro* gzm, uint32_t end)
             n_room_load++;
     }
     gzm->n_room_load = n_room_load;
-    gzm->room_load = realloc(gzm->room_load, gzm->n_room_load * sizeof(struct movie_room_load));
+    gzm->room_load = (struct movie_room_load*)realloc(gzm->room_load, gzm->n_room_load * sizeof(struct movie_room_load));
 
     // Adjust last recorded frame
     gzm->last_recorded_frame = gzm->n_input - 1;
@@ -332,7 +332,7 @@ gzm_cat(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_macro
     gzm->n_input = gzm1->n_input + gzm2->n_input;
     if (gzm->n_input != 0)
     {
-        gzm->input = malloc(gzm->n_input * sizeof(struct movie_input));
+        gzm->input = (struct movie_input*)malloc(gzm->n_input * sizeof(struct movie_input));
         if (gzm1->input != NULL)
             memcpy(&gzm->input[0], gzm1->input, gzm1->n_input * sizeof(struct movie_input));
         if (gzm2->input != NULL)
@@ -343,7 +343,7 @@ gzm_cat(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_macro
     gzm->n_seed = gzm1->n_seed + gzm2->n_seed;
     if (gzm->n_seed)
     {
-        gzm->seed = malloc(gzm->n_seed * sizeof(struct movie_seed));
+        gzm->seed = (struct movie_seed*)malloc(gzm->n_seed * sizeof(struct movie_seed));
         if (gzm1->seed != NULL)
             memcpy(&gzm->seed[0], gzm1->seed, gzm1->n_seed * sizeof(struct movie_seed));
         if (gzm2->seed != NULL)
@@ -361,7 +361,7 @@ gzm_cat(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_macro
     gzm->n_oca_input = gzm1->n_oca_input + gzm2->n_oca_input;
     if (gzm->n_oca_input != 0)
     {
-        gzm->oca_input = malloc(gzm->n_oca_input * sizeof(struct movie_oca_input));
+        gzm->oca_input = (struct movie_oca_input*)malloc(gzm->n_oca_input * sizeof(struct movie_oca_input));
         if (gzm1->oca_input != NULL)
             memcpy(&gzm->oca_input[0], gzm1->oca_input, gzm1->n_oca_input * sizeof(struct movie_oca_input));
         if (gzm2->oca_input != NULL)
@@ -376,7 +376,7 @@ gzm_cat(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_macro
     gzm->n_oca_sync = gzm1->n_oca_sync + gzm2->n_oca_sync;
     if (gzm->n_oca_sync != 0)
     {
-        gzm->oca_sync = malloc(gzm->n_oca_sync * sizeof(struct movie_oca_sync));
+        gzm->oca_sync = (struct movie_oca_sync*)malloc(gzm->n_oca_sync * sizeof(struct movie_oca_sync));
         if (gzm1->oca_sync != NULL)
             memcpy(&gzm->oca_sync[0], gzm1->oca_sync, gzm1->n_oca_sync * sizeof(struct movie_oca_sync));
         if (gzm2->oca_sync != NULL)
@@ -391,7 +391,7 @@ gzm_cat(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_macro
     gzm->n_room_load = gzm1->n_room_load + gzm2->n_room_load;
     if (gzm->n_room_load != 0)
     {
-        gzm->room_load = malloc(gzm->n_room_load * sizeof(struct movie_room_load));
+        gzm->room_load = (struct movie_room_load*)malloc(gzm->n_room_load * sizeof(struct movie_room_load));
         if (gzm1->room_load != NULL)
             memcpy(&gzm->room_load[0], gzm1->room_load, gzm1->n_room_load * sizeof(struct movie_room_load));
         if (gzm2->room_load != NULL)
@@ -425,7 +425,7 @@ gzm_cat_r(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_mac
 
     // Copy inputs
     gzm->n_input = (last_frame_1 - 0) + (gzm2->n_input - first_frame_2);
-    gzm->input = malloc(gzm->n_input * sizeof(struct movie_input));
+    gzm->input = (struct movie_input*)malloc(gzm->n_input * sizeof(struct movie_input));
     memcpy(&gzm->input[0], &gzm1->input[0], (last_frame_1 - 0) * sizeof(struct movie_input));
     memcpy(&gzm->input[last_frame_1], &gzm2->input[first_frame_2], (gzm2->n_input - first_frame_2) * sizeof(struct movie_input));
 
@@ -436,7 +436,7 @@ gzm_cat_r(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_mac
 
     // Copy seeds (-1 since we merge last seed of first with first seed of second)
     gzm->n_seed = gzm1->n_seed + gzm2->n_seed - 1;
-    gzm->seed = malloc(gzm->n_seed * sizeof(struct movie_seed));
+    gzm->seed = (struct movie_seed*)malloc(gzm->n_seed * sizeof(struct movie_seed));
     memcpy(&gzm->seed[0], &gzm1->seed[0], gzm1->n_seed * sizeof(struct movie_seed));
     gzm->seed[gzm1->n_seed - 1].new_seed = gzm2->seed[0].new_seed;
     memcpy(&gzm->seed[gzm1->n_seed], &gzm2->seed[1], (gzm2->n_seed - 1) * sizeof(struct movie_seed));
@@ -464,7 +464,7 @@ gzm_cat_r(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_mac
     gzm->n_oca_input = n_oca_input_1 + n_oca_input_2;
     if (gzm->n_oca_input != 0)
     {
-        gzm->oca_input = malloc(gzm->n_oca_input * sizeof(struct movie_oca_input));
+        gzm->oca_input = (struct movie_oca_input*)malloc(gzm->n_oca_input * sizeof(struct movie_oca_input));
         if (gzm1->oca_input != NULL)
             memcpy(&gzm->oca_input[0], &gzm1->oca_input[0], n_oca_input_1 * sizeof(struct movie_oca_input));
         if (gzm2->oca_input != NULL)
@@ -495,7 +495,7 @@ gzm_cat_r(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_mac
     gzm->n_oca_sync = n_oca_sync_1 + n_oca_sync_2;
     if (gzm->n_oca_sync != 0)
     {
-        gzm->oca_sync = malloc(gzm->n_oca_sync * sizeof(struct movie_oca_sync));
+        gzm->oca_sync = (struct movie_oca_sync*)malloc(gzm->n_oca_sync * sizeof(struct movie_oca_sync));
         if (gzm1->oca_sync != NULL)
             memcpy(&gzm->oca_sync[0], &gzm1->oca_sync[0], n_oca_sync_1 * sizeof(struct movie_oca_sync));
         if (gzm2->oca_sync != NULL)
@@ -526,7 +526,7 @@ gzm_cat_r(struct gz_macro* gzm, const struct gz_macro* gzm1, const struct gz_mac
     gzm->n_room_load = n_room_load_1 + n_room_load_2;
     if (gzm->n_room_load != 0)
     {
-        gzm->room_load = malloc(gzm->n_room_load * sizeof(struct movie_room_load));
+        gzm->room_load = (struct movie_room_load*)malloc(gzm->n_room_load * sizeof(struct movie_room_load));
         if (gzm1->room_load != NULL)
             memcpy(&gzm->room_load[0], &gzm1->room_load[0], n_room_load_1 * sizeof(struct movie_room_load));
         if (gzm2->room_load != NULL)
@@ -553,7 +553,7 @@ gzm_slice(struct gz_macro* output_gzm, const struct gz_macro* input_gzm, uint32_
     memset(output_gzm, 0, sizeof(struct gz_macro));
     // Copy inputs
     output_gzm->n_input = frame_end - frame_start;
-    output_gzm->input = malloc(output_gzm->n_input * sizeof(struct movie_input));
+    output_gzm->input = (struct movie_input*)malloc(output_gzm->n_input * sizeof(struct movie_input));
     memcpy(&output_gzm->input[0], &input_gzm->input[frame_start], output_gzm->n_input * sizeof(struct movie_input));
 
     int n_seed = 0;
@@ -576,7 +576,7 @@ gzm_slice(struct gz_macro* output_gzm, const struct gz_macro* input_gzm, uint32_
         }
     }
     output_gzm->n_seed = n_seed;
-    output_gzm->seed = malloc(output_gzm->n_seed * sizeof(struct movie_seed));
+    output_gzm->seed = (struct movie_seed*)malloc(output_gzm->n_seed * sizeof(struct movie_seed));
     memcpy(&output_gzm->seed[0], &input_gzm->seed[first_seed_idx], n_seed * sizeof(struct movie_seed));
 
     if (input_gzm->n_oca_input != 0 && input_gzm->oca_input != NULL) {
@@ -601,7 +601,7 @@ gzm_slice(struct gz_macro* output_gzm, const struct gz_macro* input_gzm, uint32_
             }
         }
         output_gzm->n_oca_input = n_oca_input;
-        output_gzm->oca_input = malloc(output_gzm->n_oca_input * sizeof(struct movie_oca_input));
+        output_gzm->oca_input = (struct movie_oca_input*)malloc(output_gzm->n_oca_input * sizeof(struct movie_oca_input));
         memcpy(&output_gzm->oca_input[0], &input_gzm->oca_input[first_idx], n_oca_input * sizeof(struct movie_oca_input));
     }
 
@@ -627,7 +627,7 @@ gzm_slice(struct gz_macro* output_gzm, const struct gz_macro* input_gzm, uint32_
             }
         }
         output_gzm->n_oca_sync = n_oca_sync;
-        output_gzm->oca_sync = malloc(output_gzm->n_oca_sync * sizeof(struct movie_oca_sync));
+        output_gzm->oca_sync = (struct movie_oca_sync*)malloc(output_gzm->n_oca_sync * sizeof(struct movie_oca_sync));
         memcpy(&output_gzm->oca_sync[0], &input_gzm->oca_sync[first_idx], n_oca_sync * sizeof(struct movie_oca_sync));
     }
 
@@ -653,7 +653,7 @@ gzm_slice(struct gz_macro* output_gzm, const struct gz_macro* input_gzm, uint32_
             }
         }
         output_gzm->n_room_load = n_room_load;
-        output_gzm->room_load = malloc(output_gzm->n_room_load * sizeof(struct movie_room_load));
+        output_gzm->room_load = (struct movie_room_load*)malloc(output_gzm->n_room_load * sizeof(struct movie_room_load));
         memcpy(&output_gzm->room_load[0], &input_gzm->room_load[first_idx], n_room_load * sizeof(struct movie_room_load));
     }
     output_gzm->rerecords = input_gzm->rerecords; // TODO how to get this accurately if at all
@@ -730,8 +730,9 @@ gzm_print_seeds(const struct gz_macro* gzm)
 int
 gzm_update_inputs(struct gz_macro* gzm, struct movie_input* input)
 {
-    gzm->input = malloc(gzm->n_input * sizeof(struct movie_input));
+    gzm->input = (struct movie_input*)malloc(gzm->n_input * sizeof(struct movie_input));
     if (input != NULL) {
         memcpy(&gzm->input[0], input, gzm->n_input * sizeof(struct movie_input));
     }
+    return 0;
 }

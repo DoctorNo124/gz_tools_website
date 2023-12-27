@@ -8,14 +8,14 @@ namespace GzToolsAPI.Services
 {
     public class GzmMacroService
     {
-        [DllImport(@"..\..\..\..\..\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "set_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"..\..\..\..\..\GzMacrosDll\GzMacrosDll\GzMacrosDll.so", EntryPoint = "set_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int SetDllGzMacro(byte[] data, ref GzMacro gzm, int size);
 
 
-        [DllImport(@"..\..\..\..\..\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "cat_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"..\..\..\..\..\GzMacrosDll\GzMacrosDll\GzMacrosDll.so", EntryPoint = "cat_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int CatGzMacro(byte[] gzmData1, int gzmDataSize1, byte[] gzmData2, int gzmDataSize2, ref FileOutput fileOutput);
 
-        [DllImport(@"..\..\..\..\..\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "update_inputs_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"..\..\..\..\..\GzMacrosDll\GzMacrosDll\GzMacrosDll.so", EntryPoint = "update_inputs_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int UpdateInputsGzMacro(ref GzMacro gzm, in MovieInput input, ref FileOutput fileOutput);
 
         public class GzMacroWrapper
@@ -157,7 +157,7 @@ namespace GzToolsAPI.Services
                 var addRequest = request.AddInputs[i];
                 if (addRequest.frameIndex >= 0 && addRequest.frameIndex < gzMacro.n_input)
                 {
-                    addRequest.frameIndex -= request.DeleteInputsFrameIndexes.Count(index => index < addRequest.frameIndex);
+                    addRequest.frameIndex -= request.DeleteInputsFrameIndexes.Count(index => index < addRequest.frameIndex || (index == addRequest.frameIndex && index != 0));
                     addRequest.frameIndex += frameIndexes.Take(i).Count(index => index < addRequest.frameIndex);
                     List<MovieInput> startingInputs = inputSpan.Slice(0, addRequest.frameIndex + 1).ToArray().ToList();
                     List<MovieInput> endingInputs = inputSpan.Slice(addRequest.frameIndex, (int)gzMacro.n_input - (addRequest.frameIndex) - 1).ToArray().ToList();
