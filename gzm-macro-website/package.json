@@ -13,6 +13,7 @@
     "axios": "^1.6.2",
     "core-js": "^3.29.0",
     "file64": "^1.0.3",
+    "lodash": "^4.17.21",
     "pinia": "^2.0.0",
     "roboto-fontface": "*",
     "vue": "^3.2.0",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@babel/types": "^7.21.4",
+    "@types/lodash": "^4.14.202",
     "@types/node": "^18.15.0",
     "@vitejs/plugin-vue": "^4.0.0",
     "@vue/eslint-config-typescript": "^11.0.0",

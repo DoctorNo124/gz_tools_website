@@ -8,6 +8,7 @@
     <template v-slot:append>
         <v-btn to="/cat"><v-icon icon="mdi-plus"></v-icon>Concatenate</v-btn>
         <v-btn to="/stats"><v-icon icon="mdi-math-norm"></v-icon>Statistics</v-btn>
+        <v-btn to="/inputs"><v-icon icon="mdi-gamepad"></v-icon>Inputs</v-btn>
     </template>
   </v-app-bar>
 </template>

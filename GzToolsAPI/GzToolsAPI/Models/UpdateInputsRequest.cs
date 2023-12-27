@@ -28,7 +28,11 @@ namespace GzToolsAPI.Models
         }
 
         public string Base64 { get; set; } = string.Empty;
-        public AddModifyInputWrapper[] Inputs { get; set; } = Array.Empty<AddModifyInputWrapper>();
+        public AddModifyInputWrapper[] AddInputs { get; set; } = Array.Empty<AddModifyInputWrapper>();
+        public AddModifyInputWrapper[] ModifyInputs { get; set; } = Array.Empty<AddModifyInputWrapper>();
+
+
+        public int[] DeleteInputsFrameIndexes { get; set; } = Array.Empty<int>();
 
         public static ushort setInputsOnPad(ushort pad, InputButtons[] inputButtons)
         {

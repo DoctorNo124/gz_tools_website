@@ -3,6 +3,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Cat from '@/views/Cat.vue';
 import Stats from '@/views/Stats.vue';
 import Dashboard from '@/views/Dashboard.vue';
+import EditInputs from '@/views/EditInputs.vue';
+
 
 const routes = [
   {
@@ -19,6 +21,11 @@ const routes = [
     path: '/stats', 
     component: Stats, 
     name: 'Statistics',
+  }, 
+  {
+    path: '/inputs', 
+    component: EditInputs,
+    name: 'Inputs',
   }
 ]
 

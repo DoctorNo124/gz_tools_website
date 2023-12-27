@@ -37,6 +37,12 @@
             description: "View stats of a macro",
             path: "/stats",
             icon: "mdi-math-norm"
+        },
+        {
+            name: "Inputs",
+            description: "View and edit inputs of a macro",
+            path: "/inputs",
+            icon: "mdi-gamepad"
         }
     ]
 </script>

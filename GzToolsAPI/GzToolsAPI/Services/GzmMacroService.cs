@@ -1,5 +1,6 @@
 ﻿using GzToolsAPI.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static GzToolsAPI.Models.GzMacro;
 
@@ -7,16 +8,15 @@ namespace GzToolsAPI.Services
 {
     public class GzmMacroService
     {
-
-        [DllImport(@"C:\Repos\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "set_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"..\..\..\..\..\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "set_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int SetDllGzMacro(byte[] data, ref GzMacro gzm, int size);
 
 
-        [DllImport(@"C:\Repos\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "cat_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"..\..\..\..\..\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "cat_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int CatGzMacro(byte[] gzmData1, int gzmDataSize1, byte[] gzmData2, int gzmDataSize2, ref FileOutput fileOutput);
 
-        [DllImport(@"C:\Repos\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "update_inputs_gzmacro", CallingConvention = CallingConvention.StdCall)]
-        public static extern int UpdateInputsGzMacro(ref GzMacro gzm, Span<MovieInput> input, ref FileOutput fileOutput);
+        [DllImport(@"..\..\..\..\..\GzMacrosDll\x64\Debug\GzMacrosDll.dll", EntryPoint = "update_inputs_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        public static extern int UpdateInputsGzMacro(ref GzMacro gzm, in MovieInput input, ref FileOutput fileOutput);
 
         public class GzMacroWrapper
         {
@@ -110,7 +110,7 @@ namespace GzToolsAPI.Services
             return outputBytes;
         }
 
-        public byte[] AddInputs(UpdateInputsRequest request)
+        public byte[] UpdateInputs(UpdateInputsRequest request)
         {
             var gzMacro = new GzMacro();
             var bytes = Convert.FromBase64String(request.Base64);
@@ -120,14 +120,47 @@ namespace GzToolsAPI.Services
             {
                 inputSpan = new Span<MovieInput>(gzMacro.input.ToPointer(), (int)gzMacro.n_input);
             }
-            var frameIndexes = request.Inputs.Select(input => input.frameIndex);
-            for (int i = 0; i < request.Inputs.Length; i ++) { 
-                var addRequest = request.Inputs[i];
+            var frameIndexes = request.ModifyInputs.Select(input => input.frameIndex);
+            foreach (var modifyRequest in request.ModifyInputs)
+            {
+                if (modifyRequest.frameIndex >= 0 && modifyRequest.frameIndex < gzMacro.n_input)
+                {
+                    inputSpan[modifyRequest.frameIndex] = modifyRequest.getNewMovieInput(inputSpan[modifyRequest.frameIndex].raw.pad);
+                }
+                else
+                {
+                    throw new Exception("Invalid frame index " + modifyRequest.frameIndex + " for modifying input in macro!");
+                }
+            }
+            for (int i = 0; i < request.DeleteInputsFrameIndexes.Length; i++)
+            {
+                var deleteFrameIndex = request.DeleteInputsFrameIndexes[i];
+                if (deleteFrameIndex >= 0 && deleteFrameIndex < gzMacro.n_input)
+                {
+                    deleteFrameIndex -= request.DeleteInputsFrameIndexes.Take(i).Count(index => index < deleteFrameIndex);
+                    List<MovieInput> startingInputs = inputSpan.Slice(0, deleteFrameIndex).ToArray().ToList();
+                    List<MovieInput> endingInputs = inputSpan.Slice(deleteFrameIndex + 1, (int)gzMacro.n_input - deleteFrameIndex - 1).ToArray().ToList();
+                    List<MovieInput> finalList =
+                    [
+                        .. startingInputs,
+                        .. endingInputs,
+                    ];
+                    inputSpan = new Span<MovieInput>(finalList.ToArray());
+                    gzMacro.n_input--;
+                }
+                else
+                {
+                    throw new Exception("Invalid frame index " + deleteFrameIndex + " for deleting input in macro!");
+                }
+            }
+            for (int i = 0; i < request.AddInputs.Length; i ++) { 
+                var addRequest = request.AddInputs[i];
                 if (addRequest.frameIndex >= 0 && addRequest.frameIndex < gzMacro.n_input)
                 {
+                    addRequest.frameIndex -= request.DeleteInputsFrameIndexes.Count(index => index < addRequest.frameIndex);
                     addRequest.frameIndex += frameIndexes.Take(i).Count(index => index < addRequest.frameIndex);
-                    List<MovieInput> startingInputs = inputSpan.Slice(0, addRequest.frameIndex).ToArray().ToList();
-                    List<MovieInput> endingInputs = inputSpan.Slice(addRequest.frameIndex + 1, (int)gzMacro.n_input).ToArray().ToList();
+                    List<MovieInput> startingInputs = inputSpan.Slice(0, addRequest.frameIndex + 1).ToArray().ToList();
+                    List<MovieInput> endingInputs = inputSpan.Slice(addRequest.frameIndex, (int)gzMacro.n_input - (addRequest.frameIndex) - 1).ToArray().ToList();
                     List<MovieInput> finalList =
                     [
                         .. startingInputs,
@@ -137,7 +170,7 @@ namespace GzToolsAPI.Services
                     inputSpan = new Span<MovieInput>(finalList.ToArray());
                     gzMacro.n_input++;
                 }
-                else if(addRequest.frameIndex == gzMacro.n_input - 1) 
+                else if(addRequest.frameIndex == gzMacro.n_input + 1) 
                 {
                     List<MovieInput> finalList =
                     [
@@ -152,72 +185,19 @@ namespace GzToolsAPI.Services
                     throw new Exception("Invalid frame index " + addRequest.frameIndex + " for adding input to macro!");
                 }
             }
-
-            return UpdateInputsFromSpan(inputSpan, gzMacro);
-        }
-
-        public byte[] ModifyInputs(UpdateInputsRequest request)
-        {
-            var gzMacro = new GzMacro();
-            var bytes = Convert.FromBase64String(request.Base64);
-            int code = SetDllGzMacro(bytes, ref gzMacro, bytes.Length);
-            Span<MovieInput> inputSpan;
-            unsafe
-            {
-                inputSpan = new Span<MovieInput>(gzMacro.input.ToPointer(), (int)gzMacro.n_input);
-            }
-            foreach (var modifyRequest in request.Inputs)
-            {
-                if (modifyRequest.frameIndex >= 0 && modifyRequest.frameIndex < gzMacro.n_input)
-                {
-                    inputSpan[modifyRequest.frameIndex] = modifyRequest.getNewMovieInput(inputSpan[modifyRequest.frameIndex].raw.pad);
-                }
-                else
-                {
-                    throw new Exception("Invalid frame index " + modifyRequest.frameIndex + " for modifying input in macro!");
-                }
-            }
-            return UpdateInputsFromSpan(inputSpan, gzMacro);
-        }
-
-        public byte[] DeleteInputs(DeleteInputsRequest request)
-        {
-            var gzMacro = new GzMacro();
-            var bytes = Convert.FromBase64String(request.Base64);
-            int code = SetDllGzMacro(bytes, ref gzMacro, bytes.Length);
-            Span<MovieInput> inputSpan;
-            unsafe
-            {
-                inputSpan = new Span<MovieInput>(gzMacro.input.ToPointer(), (int)gzMacro.n_input);
-            }
-            for (int i = 0; i < request.DeleteInputsFrameIndexes.Length; i++)
-            {
-                var deleteFrameIndex = request.DeleteInputsFrameIndexes[i];
-                if (deleteFrameIndex >= 0 && deleteFrameIndex < gzMacro.n_input)
-                {
-                    deleteFrameIndex -= request.DeleteInputsFrameIndexes.Take(i).Count(index => index < deleteFrameIndex);
-                    List<MovieInput> startingInputs = inputSpan.Slice(0, deleteFrameIndex - 1).ToArray().ToList();
-                    List<MovieInput> endingInputs = inputSpan.Slice(deleteFrameIndex + 1, (int)gzMacro.n_input).ToArray().ToList();
-                    List<MovieInput> finalList =
-                    [
-                        .. startingInputs,
-                        .. endingInputs,
-                    ];
-                    inputSpan = new Span<MovieInput>(finalList.ToArray());
-                    gzMacro.n_input--;
-                }
-                else
-                {
-                    throw new Exception("Invalid frame index " + deleteFrameIndex + " for deleting input in macro!");
-                }
-            }
             return UpdateInputsFromSpan(inputSpan, gzMacro);
         }
 
         private byte[] UpdateInputsFromSpan(Span<MovieInput> inputSpan, GzMacro gzMacro)
         {
             var fileOutput = new FileOutput();
-            UpdateInputsGzMacro(ref gzMacro, inputSpan, ref fileOutput);
+            unsafe
+            {
+                fixed (MovieInput* ptr = &MemoryMarshal.GetReference(inputSpan))
+                {
+                    UpdateInputsGzMacro(ref gzMacro, Unsafe.AsRef<MovieInput>(ptr), ref fileOutput);
+                }
+            }
             byte[] outputBytes;
             unsafe
             {
