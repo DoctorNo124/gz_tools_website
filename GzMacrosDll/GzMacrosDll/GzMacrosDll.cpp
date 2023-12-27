@@ -1,7 +1,5 @@
 // GzMacrosDll.cpp : Defines the exported functions for the DLL.
 //
-
-#include "framework.h"
 #include <iostream>
 #include "GzMacrosDll.h"
 #include "gzm_struct_utils.h"
