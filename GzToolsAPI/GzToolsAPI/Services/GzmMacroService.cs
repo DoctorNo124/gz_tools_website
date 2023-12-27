@@ -8,14 +8,14 @@ namespace GzToolsAPI.Services
 {
     public class GzmMacroService
     {
-        [DllImport(@"..\..\..\..\..\GzMacrosDll\GzMacrosDll\GzMacrosDll.so", EntryPoint = "set_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"/home/bitnami/gz_tools_website/GzMacrosDll/GzMacrosDll/GzMacrosDll.so", EntryPoint = "set_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int SetDllGzMacro(byte[] data, ref GzMacro gzm, int size);
 
 
-        [DllImport(@"..\..\..\..\..\GzMacrosDll\GzMacrosDll\GzMacrosDll.so", EntryPoint = "cat_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"/home/bitnami/gz_tools_website/GzMacrosDll/GzMacrosDll/GzMacrosDll.so", EntryPoint = "cat_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int CatGzMacro(byte[] gzmData1, int gzmDataSize1, byte[] gzmData2, int gzmDataSize2, ref FileOutput fileOutput);
 
-        [DllImport(@"..\..\..\..\..\GzMacrosDll\GzMacrosDll\GzMacrosDll.so", EntryPoint = "update_inputs_gzmacro", CallingConvention = CallingConvention.StdCall)]
+        [DllImport(@"/home/bitnami/gz_tools_website/GzMacrosDll/GzMacrosDll/GzMacrosDll.so", EntryPoint = "update_inputs_gzmacro", CallingConvention = CallingConvention.StdCall)]
         public static extern int UpdateInputsGzMacro(ref GzMacro gzm, in MovieInput input, ref FileOutput fileOutput);
 
         public class GzMacroWrapper
