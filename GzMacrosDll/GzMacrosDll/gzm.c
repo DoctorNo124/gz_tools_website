@@ -13,10 +13,10 @@ bswap(void* dst, const void* data, size_t size)
     switch (size)
     {
         case sizeof(uint32_t) :
-            *(uint32_t*)(dst) = _byteswap_ulong(*(uint32_t*)(data));
+            *(uint32_t*)(dst) = __builtin_bswap32(*(uint32_t*)(data));
             break;
             case sizeof(uint16_t) :
-                *(uint16_t*)(dst) = _byteswap_ushort(*(uint16_t*)(data));
+                *(uint16_t*)(dst) = __builtin_bswap16(*(uint16_t*)(data));
                 break;
                 case sizeof(uint8_t) :
                     *(uint8_t*)(dst) = *(uint8_t*)(data);
