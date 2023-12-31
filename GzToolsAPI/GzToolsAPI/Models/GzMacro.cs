@@ -6,8 +6,8 @@ namespace GzToolsAPI.Models
     public struct Z64Controller
     {
         public ushort pad { get; set; }
-        public byte x { get; set; }
-        public byte y { get; set; }
+        public sbyte x { get; set; }
+        public sbyte y { get; set; }
     }
 
     [StructLayout(LayoutKind.Sequential)]

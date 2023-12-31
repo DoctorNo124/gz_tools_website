@@ -1,6 +1,6 @@
 <template>
     <v-container>
-        <v-row>
+        <v-row :class="{ 'mt-10': gzMacroWrapper}">
             <v-file-input
                 v-model="files"
                 :rules="[(v) => v.length != 0 || 'File cannot be empty']"
@@ -11,44 +11,21 @@
                 >
             </v-file-input>
         </v-row>
-        <v-row v-if="gzMacroWrapper">
-            <v-btn @click="openAddDialog" class="mr-5">Add Input</v-btn>
-            <v-btn @click="commitChanges" :disabled="commitDisabled" class="mr-5">Commit Changes</v-btn>
-            <v-btn @click="downloadNewFile" class="mr-5" :disabled="!blobToDownload">Download New File</v-btn>
-            <v-btn @click="showChangesDialog = true">Show Changes</v-btn>
-        </v-row>
         <v-row>
-            <input-data-table :inputs="inputs" :headers="headers" :showActions="true" @edit-item="openModifyDialog" @delete-item="deleteItem"></input-data-table>
+            <input-data-table :inputs="inputs" :headers="headers" :showActions="true" @edit-item="modifyInput" @add-item="addInput" @delete-item="deleteItem" @save-item="saveItem" @cancel-item="cancelItem">
+                <template #toolbar>
+                    <v-col>
+                        <v-btn @click="openAddDialog" class="mr-5">Add Input</v-btn>
+                    </v-col>
+                    <v-col>
+                        <v-btn @click="downloadNewFile" class="mr-5" :disabled="!base64">Download File</v-btn>
+                    </v-col>
+                    <v-col>
+                        <v-btn @click="showChangesDialog = true">Show Changes</v-btn>
+                    </v-col>
+                </template>
+            </input-data-table>
         </v-row>
-        <v-dialog v-if="inputWrapperToAdd" v-model ="showAddDialog">
-            <v-card>
-                <v-card-title>Add Input</v-card-title>
-                <div class="pl-5 pr-5 pt-5 pb-5">
-                    <v-checkbox v-for="(inputButton, index) in inputWrapperToAdd.inputButtons" :key="inputButton.buttonType" v-model="inputButton.isButtonPressed" :label="inputKeys[index]">
-                    </v-checkbox>
-                    <v-text-field type="number" v-model="inputWrapperToAdd.frameIndex" label="Frame Index"></v-text-field>
-                    <v-text-field type="number" v-model="inputWrapperToAdd.x" label="Analog X"></v-text-field>
-                    <v-text-field type="number" v-model="inputWrapperToAdd.y" label="Analog Y"></v-text-field>
-                    <v-text-field type="number" v-model="inputWrapperToAdd.padDelta" label="Pad Delta"></v-text-field>
-                    <v-btn class="mr-5" @click="addInput">Submit</v-btn>
-                    <v-btn @click="closeAddDialog">Close</v-btn>
-                </div>
-            </v-card>
-        </v-dialog>
-        <v-dialog v-if="inputWrapperToModify" v-model ="showModifyDialog">
-            <v-card>
-                <v-card-title>Modify Input</v-card-title>
-                <div class="pl-5 pr-5 pt-5 pb-5">
-                    <v-checkbox v-for="(inputButton, index) in inputWrapperToModify.inputButtons" :key="inputButton.buttonType" v-model="inputButton.isButtonPressed" :label="inputKeys[index]">
-                    </v-checkbox>
-                    <v-text-field type="number" v-model="inputWrapperToModify.x" label="Analog X"></v-text-field>
-                    <v-text-field type="number" v-model="inputWrapperToModify.y" label="Analog Y"></v-text-field>
-                    <v-text-field type="number" v-model="inputWrapperToModify.padDelta" label="Pad Delta"></v-text-field>
-                    <v-btn class="mr-5" @click="modifyInput" >Submit</v-btn>
-                    <v-btn @click="closeModifyDialog">Close</v-btn>
-                </div>
-            </v-card>
-        </v-dialog>
         <v-dialog v-model="showChangesDialog">
             <v-card>
                 <v-card-title>Additions</v-card-title>
@@ -60,17 +37,31 @@
                 <v-btn @click="showChangesDialog = false">Close</v-btn>
             </v-card>
         </v-dialog>
+        <v-dialog v-if="inputWrapperToAdd" v-model ="showAddDialog">
+           <v-card>
+                <v-card-title>Add Input</v-card-title>
+                <div class="pl-5 pr-5 pt-5 pb-5">
+                    <v-checkbox v-for="(inputButton, index) in inputWrapperToAdd.inputButtons" :key="inputButton.buttonType" v-model="inputButton.isButtonPressed" :label="inputKeys[index]">
+                    </v-checkbox>
+                    <v-text-field type="number" v-model="inputWrapperToAdd.x" label="Analog X"></v-text-field>
+                    <v-text-field type="number" v-model="inputWrapperToAdd.y" label="Analog Y"></v-text-field>
+                    <v-text-field type="number" v-model="inputWrapperToAdd.padDelta" label="Pad Delta"></v-text-field>
+                    <v-btn class="mr-5" @click="addInputFromDialog">Submit</v-btn>
+                    <v-btn @click="closeAddDialog">Close</v-btn>
+                </div>
+            </v-card>
+        </v-dialog>
     </v-container>
 </template>
   
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { fileToBase64 } from 'file64';
 import { GzMacroWrapper, InputButtonType, InputButtons, InputWrapper } from '@/models'
 import axios from 'axios';
-import { cloneDeep, forIn } from 'lodash';
+import { cloneDeep } from 'lodash';
 import InputDataTable from '@/components/InputDataTable.vue';
-import { blob } from 'stream/consumers';
+import { v4 as uuidv4 } from 'uuid';
 
 const files = ref<File[]>([]);
 const gzMacroWrapper = ref<GzMacroWrapper>();
@@ -78,10 +69,10 @@ const inputs = ref<InputWrapper[]>([]);
 const addInputs = ref<InputWrapper[]>([]);
 const deleteInputs = ref<number[]>([]);
 const modifyInputs = ref<InputWrapper[]>([]);
+const originalModifyInputs = ref<InputWrapper[]>([]);
 const inputKeys = Object.keys(InputButtonType).filter((v) => isNaN(Number(v)));
 const inputValues = Object.values(InputButtonType).filter((v) => !isNaN(Number(v))).sort((a, b) => Number(b) - Number(a));
-const tentativeInputCount = ref(0);
-const blobToDownload = ref<Blob>();
+const base64 = ref<string>();
 
 const inputButtons: InputButtons[] = [];
 inputKeys.forEach((key => { 
@@ -91,66 +82,133 @@ inputKeys.forEach((key => {
     })
 }));
 const initialInputWrapper: InputWrapper =  {
+    id: '',
     frameIndex: 0, 
     x: 0, 
     y: 0, 
     padDelta: 0, 
-    inputButtons: inputButtons
+    inputButtons: inputButtons, 
+    isEditable: true,
+    isAdded: true,
 };
+
+
+const addInput = (item: InputWrapper, index: number) => { 
+    const inputWrapperToAdd = cloneDeep(initialInputWrapper);
+    inputWrapperToAdd.id = uuidv4();
+    if(item.isAdded && item.addOrder) { 
+        inputWrapperToAdd.addOrder = item.addOrder + 1;
+    }
+    else { 
+        inputWrapperToAdd.addOrder = 1;
+    }
+    inputWrapperToAdd.frameIndex = index + 1;
+    inputs.value.splice(inputWrapperToAdd.frameIndex, 0, inputWrapperToAdd);
+}
 
 const showAddDialog = ref(false);
 const inputWrapperToAdd = ref<InputWrapper>();
-
+ 
 const openAddDialog = () => { 
     showAddDialog.value = true;
     inputWrapperToAdd.value = cloneDeep(initialInputWrapper);
+    inputWrapperToAdd.value.frameIndex = inputs.value.length;
 }
+
 const closeAddDialog = () => { 
     showAddDialog.value = false; 
     inputWrapperToAdd.value = undefined;
 }
-const addInput = () => { 
+const addInputFromDialog = () => { 
     if(inputWrapperToAdd.value) { 
         addInputs.value.push(inputWrapperToAdd.value);
-        tentativeInputCount.value++;
+        inputs.value.push(inputWrapperToAdd.value);
         closeAddDialog();
     }
 }
 
-const showModifyDialog = ref(false); 
-const inputWrapperToModify = ref<InputWrapper>();
-
-const openModifyDialog = (item: InputWrapper) => { 
-    showModifyDialog.value = true;
-    inputWrapperToModify.value = item;
-}
-const closeModifyDialog = () => { 
-    showModifyDialog.value = false; 
-    inputWrapperToModify.value = undefined;
-}
-const modifyInput = () => { 
-    if(inputWrapperToModify.value) { 
-        modifyInputs.value.push(inputWrapperToModify.value);
-        closeModifyDialog();
+const modifyInput = (item: InputWrapper) => { 
+    item.isEditable = true;
+    const originalModifyInput = cloneDeep(item);
+    originalModifyInputs.value.push(originalModifyInput);
+    if(item.isAdded) { 
+        item.isEditingAdd = true;
     }
 }
 
+const saveItem = (item: InputWrapper) => { 
+    if(item.bitPadDelta) { 
+        item.padDelta = parseInt(item.bitPadDelta, 2);
+    }
+    item.isEditable = false;
+    if(item.isAdded && item.addOrder) {
+        if(item.isEditingAdd) { 
+            const matchingAddedInputIndex = addInputs.value.findIndex((addInput) => addInput.id === item.id);
+            if(matchingAddedInputIndex !== -1) { 
+                addInputs.value[matchingAddedInputIndex] = cloneDeep(item);
+            }
+        }
+        else { 
+            const inputToAdd = cloneDeep(item);
+            if(inputToAdd.frameIndex) { 
+                inputToAdd.frameIndex -= item.addOrder;
+            }
+            addInputs.value.push(inputToAdd);
+        }
+    }
+    else { 
+        const index = modifyInputs.value.findIndex((input) => input.id === item.id);
+        if(index !== -1) { 
+            modifyInputs.value[index] = item;
+        }
+        else { 
+            modifyInputs.value.push(cloneDeep(item));
+        }
+        const originalModifyInputIndex = originalModifyInputs.value.findIndex((input) => input.id === item.id);
+        originalModifyInputs.value.splice(originalModifyInputIndex, 1);
+    }
+    item.isEditable = false;
+}
 
-const showChangesDialog = ref(false);
+const cancelItem = (item: InputWrapper, index: number) => { 
+    if(item.isAdded) { 
+        inputs.value.splice(index, 1);
+    }
+    else { 
+        const modifyIndex = inputs.value.findIndex((input) => input.id === item.id);
+        let matchingOriginalModifyInputIndex = -1;
+        let matchingOriginalModifyInput: InputWrapper | undefined= undefined;
+        for(let i = 0; i < originalModifyInputs.value.length; i++) { 
+            const originalModifyInput = originalModifyInputs.value[i];
+            if(originalModifyInput.frameIndex === item.frameIndex) { 
+                matchingOriginalModifyInputIndex = i;
+                matchingOriginalModifyInput = originalModifyInput;
+                break;
+            }
+        }
+        if(matchingOriginalModifyInput) { 
+            inputs.value[modifyIndex] = matchingOriginalModifyInput;
+            originalModifyInputs.value.splice(matchingOriginalModifyInputIndex, 1);
+        }
+    }
+}
 
 const getMacroFromFile = async (newFiles: File[]) => { 
-    const base64 = (await fileToBase64(newFiles[0])).split('base64,')[1];
-    await getMacro(base64);
-    blobToDownload.value = undefined;
+    base64.value = (await fileToBase64(newFiles[0])).split('base64,')[1];
+    await getMacro();
 };
 
-const getMacro = async (base64: string) => { 
+const getMacro = async () => { 
     addInputs.value = [];
     deleteInputs.value = []; 
     modifyInputs.value = [];
     inputs.value = [];
-    const axiosResponse = (await axios.post<GzMacroWrapper>(import.meta.env.VITE_API_URL + '/GzMacro/stats', { base64: base64 }));
+    const axiosResponse = (await axios.post<GzMacroWrapper>(import.meta.env.VITE_API_URL + '/GzMacro/stats', { base64: base64.value }));
     gzMacroWrapper.value = axiosResponse.data;
+    populateInputs();
+}
+
+const populateInputs = () => { 
     gzMacroWrapper.value?.inputs.forEach((input, index) => { 
         const inputButtons: InputButtons[] = [];
         const pad = input.raw.pad;
@@ -170,56 +228,72 @@ const getMacro = async (base64: string) => {
             }
         });
         inputs.value.push({
+            id: uuidv4(),
             inputButtons: inputButtons, 
             frameIndex: index,
             x: input.raw.x,
             y: input.raw.y, 
             padDelta: input.pad_delta,
+            isEditable: false,
         })
     });
-    tentativeInputCount.value = gzMacroWrapper.value.macro.n_input;
-
 }
 
-const deleteItem = (item: InputWrapper) => { 
-    deleteInputs.value.push(item.frameIndex);
+const deleteItem = (item: InputWrapper, index: number) => { 
+    inputs.value.splice(index, 1);
+    if(item.isAdded) { 
+        const matchingAddInputsIndex = addInputs.value.findIndex((input) => item.id === input.id);
+        if(matchingAddInputsIndex !== -1) { 
+            addInputs.value.splice(matchingAddInputsIndex, 1);
+        }
+    }
+    else { 
+        const matchingModifyInputsIndex = modifyInputs.value.findIndex((input) => item.id === input.id);
+        if(matchingModifyInputsIndex !== -1) {
+            modifyInputs.value.splice(matchingModifyInputsIndex, 1);
+        }
+        if(item.frameIndex) { 
+            deleteInputs.value.push(item.frameIndex);
+        }
+    }
 };
 
-const commitChanges = async () => { 
-    const base64 = (await fileToBase64(files.value[0])).split('base64,')[1];
+const showChangesDialog = ref(false);
+
+const downloadNewFile = async () => { 
     const newFile = (await axios.post(import.meta.env.VITE_API_URL + '/GzMacro/inputs',
     {
-        base64: base64, 
+        base64: base64.value, 
         addInputs: addInputs.value, 
         modifyInputs: modifyInputs.value, 
         deleteInputsFrameIndexes: deleteInputs.value,
     }, { responseType: 'blob'})).data;
-    blobToDownload.value = newFile;
-    const newBase64 = (await fileToBase64(newFile)).split('base64,')[1];
-    await getMacro(newBase64);
+    const blobUrl = URL.createObjectURL(newFile);
+    const link = document.createElement('a');
+    link.href = blobUrl; 
+    link.download = files.value[0].name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    base64.value = (await fileToBase64(newFile)).split('base64,')[1];
+    await getMacro();
 }
 
-const commitDisabled = computed(() => { 
-    return addInputs.value.length === 0 
-        && modifyInputs.value.length === 0
-        && deleteInputs.value.length === 0
-});
-
-const downloadNewFile = () => { 
-    if(blobToDownload.value) { 
-        const blobUrl = URL.createObjectURL(blobToDownload.value);
-        const link = document.createElement('a');
-        link.href = blobUrl; 
-        link.download = files.value[0].name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-}
-
-const headers = [
+const headers = [   
     {
-        title: "Frame"
+        title: '',
+    },
+    {
+        title: 'Frame Index',
+    },
+    {
+        title: 'Analog X',
+    },
+    {
+        title: 'Analog Y',
+    }, 
+    {
+        title: 'Pad Delta',
     },
     {
         title: 'A', 
@@ -265,17 +339,12 @@ const headers = [
     },
     {
         title: 'CRight',
-    }, 
-    {
-        title: 'Analog X',
-    },
-    {
-        title: 'Analog Y',
-    }, 
-    {
-        title: 'Pad Delta',
     }
 ]
 
 
 </script>
+
+<style lang="css">
+
+</style>

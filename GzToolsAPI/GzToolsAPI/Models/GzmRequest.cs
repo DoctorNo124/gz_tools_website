@@ -1,6 +1,6 @@
 ﻿namespace GzToolsAPI.Models
 {
-    public class GzmStatsRequest
+    public class GzmRequest
     {
         public string Base64 { get; set; }
     }

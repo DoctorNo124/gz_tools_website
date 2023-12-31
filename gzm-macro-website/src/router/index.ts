@@ -4,6 +4,8 @@ import Cat from '@/views/Cat.vue';
 import Stats from '@/views/Stats.vue';
 import Dashboard from '@/views/Dashboard.vue';
 import EditInputs from '@/views/EditInputs.vue';
+import Trim from '@/views/Trim.vue';
+import Slice from '@/views/Slice.vue';
 
 
 const routes = [
@@ -26,6 +28,16 @@ const routes = [
     path: '/inputs', 
     component: EditInputs,
     name: 'Inputs',
+  }, 
+  {
+    path: '/trim', 
+    component: Trim, 
+    name: 'Trim',
+  }, 
+  {
+    path: '/slice', 
+    component: Slice, 
+    name: 'Slice',
   }
 ]
 

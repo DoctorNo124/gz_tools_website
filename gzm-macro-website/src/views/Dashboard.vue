@@ -43,6 +43,18 @@
             description: "View and edit inputs of a macro",
             path: "/inputs",
             icon: "mdi-gamepad"
+        }, 
+        {
+            name: "Trim",
+            description: "Take part of a macro up until an 'end' and then remove the rest",
+            path: "/trim",
+            icon: "mdi-content-cut"
+        }, 
+        {
+            name: "Slice",
+            description: "Take part of a macro up from a frame start to a frame end",
+            path: "/slice",
+            icon: "mdi-knife"
         }
     ]
 </script>
