@@ -8,8 +8,8 @@ namespace GzToolsAPI.Models
         {
             public InputButtons[] InputButtons { get; set; } = Array.Empty<InputButtons>();
             public int frameIndex { get; set; }
-            public byte x { get; set; }
-            public byte y { get; set; }
+            public sbyte x { get; set; }
+            public sbyte y { get; set; }
             public ushort padDelta { get; set; }
 
             public MovieInput getNewMovieInput(ushort pad)

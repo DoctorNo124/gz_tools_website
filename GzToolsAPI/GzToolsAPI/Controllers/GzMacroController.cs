@@ -16,7 +16,7 @@ namespace GzToolsAPI.Controllers
         }
         [HttpPost]
         [Route("stats")]
-        public GzMacroWrapper GetGzMacro([FromBody] GzmStatsRequest request)
+        public GzMacroWrapper GetGzMacro([FromBody] GzmRequest request)
         {
             var bytes = Convert.FromBase64String(request.Base64);
             var wrapper = _service.GetGzMacro(bytes);
@@ -41,6 +41,24 @@ namespace GzToolsAPI.Controllers
             return File(outputBytes, "application/octet-stream");
         }
 
+        [HttpPost]
+        [Route("trim")]
+
+        public FileContentResult TrimGzMacro([FromBody] GzmTrimRequest request)
+        {
+            var bytes = Convert.FromBase64String(request.Base64);
+            var outputBytes = _service.TrimMacro(bytes, request.End);
+            return File(outputBytes, "application/octet-stream");
+        }
+
+        [HttpPost]
+        [Route("slice")]
+        public FileContentResult SliceGzMacro([FromBody] GzmSliceRequest request)
+        {
+            var bytes = Convert.FromBase64String(request.Base64);
+            var outputBytes = _service.SliceMacro(bytes, request.FrameStart, request.FrameEnd);
+            return File(outputBytes, "application/octet-stream");
+        }
     }
 
 
