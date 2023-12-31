@@ -2,6 +2,6 @@
 {
     public class GzmTrimRequest : GzmRequest
     {
-        public uint End;
+        public uint End { get; set; }
     }
 }

@@ -12,7 +12,7 @@
         <v-text-field type="number" label="Frame End" v-model="frameEnd"></v-text-field>
         <v-text-field v-model="filename" label="Output Filename" >
         </v-text-field>
-        <v-btn @click="sliceMacro" :disabled="files.length === 0 || !frameStart || !frameEnd || !filename || filename === ''">Trim Macro</v-btn>
+        <v-btn @click="sliceMacro" :disabled="files.length === 0 || !frameStart || !frameEnd || !filename || filename === ''">Slice Macro</v-btn>
     </v-container>
 </template>
   
