@@ -19,7 +19,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { fileToBase64 } from 'file64';
-import axios from 'axios';
+import download from 'downloadjs';
 
 const files = ref<File[]>([]);
 const frameStart = ref<number>();
@@ -28,16 +28,16 @@ const filename = ref<string>();
 
 const sliceMacro = async () => { 
     const base64 = (await fileToBase64(files.value[0])).split('base64,')[1];
-    const blob = (await axios.post(import.meta.env.VITE_API_URL + '/GzMacro/slice', { base64: base64, frameStart: frameStart.value, frameEnd: frameEnd.value }, { responseType: 'blob'})).data;
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl; 
-    if(filename.value ) { 
-        link.download = filename.value;
-    }
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const response = (await fetch(import.meta.env.VITE_API_URL + '/GzMacro/slice', 
+    { 
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ base64: base64, frameStart: frameStart.value, frameEnd: frameEnd.value }),
+    }));
+    const blob = await response.blob();
+    download(blob, filename.value ?? 'test.gzm', 'application/octet-stream');
 };
 
 </script>

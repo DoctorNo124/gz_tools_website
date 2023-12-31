@@ -62,6 +62,7 @@ import axios from 'axios';
 import { cloneDeep } from 'lodash';
 import InputDataTable from '@/components/InputDataTable.vue';
 import { v4 as uuidv4 } from 'uuid';
+import download from 'downloadjs';
 
 const files = ref<File[]>([]);
 const gzMacroWrapper = ref<GzMacroWrapper>();
@@ -261,22 +262,21 @@ const deleteItem = (item: InputWrapper, index: number) => {
 const showChangesDialog = ref(false);
 
 const downloadNewFile = async () => { 
-    const newFile = (await axios.post(import.meta.env.VITE_API_URL + '/GzMacro/inputs',
+    const response = (await fetch(import.meta.env.VITE_API_URL + '/GzMacro/inputs',
     {
-        base64: base64.value, 
-        addInputs: addInputs.value, 
-        modifyInputs: modifyInputs.value, 
-        deleteInputsFrameIndexes: deleteInputs.value,
-    }, { responseType: 'blob'})).data;
-    const blobUrl = URL.createObjectURL(newFile);
-    const link = document.createElement('a');
-    link.href = blobUrl; 
-    link.download = files.value[0].name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    base64.value = (await fileToBase64(newFile)).split('base64,')[1];
-    await getMacro();
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            base64: base64.value, 
+            addInputs: addInputs.value, 
+            modifyInputs: modifyInputs.value, 
+            deleteInputsFrameIndexes: deleteInputs.value,
+        }),
+    }));
+    const newFile = await response.blob();
+    download(newFile, files.value[0].name, 'application/octet-stream')
 }
 
 const headers = [   
