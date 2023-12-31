@@ -31,3 +31,28 @@ int update_inputs_gzmacro(gz_macro* gzm, struct movie_input* input, file_output 
     gzm_write(gzm, &fileOutput);
     return 0;
 }
+
+int trim_gzmacro(uint8_t* data, size_t size, uint32_t end, file_output fileOutput) {
+    struct gz_macro gzm;
+
+    gzm_read(&gzm, data, size);
+
+    gzm_trim(&gzm, end);
+
+    gzm_write(&gzm, &fileOutput);
+
+    return 0;
+}
+
+int slice_gzmacro(uint8_t* data, size_t size, uint32_t frame_start, uint32_t frame_end, file_output fileOutput) {
+    struct gz_macro gzm;
+    struct gz_macro outputGzm;
+
+    gzm_read(&gzm, data, size);
+
+    gzm_slice(&outputGzm, &gzm, frame_start, frame_end);
+
+    gzm_write(&outputGzm, &fileOutput);
+
+    return 0;
+}
