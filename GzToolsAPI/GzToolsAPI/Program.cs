@@ -9,6 +9,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<GzmMacroService>();
+builder.Services.AddHealthChecks();
 var allowedCorsOrigins = builder.Configuration["AllowedCorsOrigins"]!.Split(",");
 builder.Services.AddCors(options =>
 {
@@ -21,7 +22,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -32,4 +32,5 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.Run();

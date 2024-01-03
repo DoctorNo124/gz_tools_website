@@ -183,7 +183,6 @@ namespace GzToolsAPI.Services
         {
             var fileOutput = new FileOutput();
             TrimGzMacro(bytes, bytes.Length, end, ref fileOutput);
-
             byte[] outputBytes;
             unsafe
             {

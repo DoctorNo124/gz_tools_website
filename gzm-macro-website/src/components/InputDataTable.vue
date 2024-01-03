@@ -1,7 +1,7 @@
 <template>
-    <v-data-table v-if="inputs.length > 0" :items="inputs" :headers="headers" :items-per-page="itemsPerPage">
-        <template v-slot:item="{ item, index }">
-            <tr>
+    <v-data-table v-if="inputs.length > 0" :headers="headers" :items-per-page="itemsPerPage">
+        <template #body>
+            <tr v-for="(item, index) in arrayChunkedInputs[page - 1]">
                 <td><v-btn @click="addItem(item, getActualIndex(index))"><v-icon icon="mdi-plus"></v-icon></v-btn></td>
                 <td>{{ getActualIndex(index) }}</td>
                 <template v-if="item.isEditable">
@@ -65,6 +65,17 @@
                     </v-col>
                     <v-col>
                         <v-text-field
+                            v-model="page"
+                            class="pa-2"
+                            hide-details
+                            label="Jump to page"
+                            min="1"
+                            :max="pageCount"
+                            type="number"
+                        ></v-text-field>
+                    </v-col>
+                    <v-col>
+                        <v-text-field
                             :model-value="itemsPerPage"
                             class="pa-2"
                             hide-details
@@ -87,6 +98,17 @@
                         :length="pageCount"
                         :total-visible="20"
                         ></v-pagination>
+                    </v-col>
+                    <v-col>
+                        <v-text-field
+                            v-model="page"
+                            class="pa-2"
+                            hide-details
+                            label="Jump to page"
+                            min="1"
+                            :max="pageCount"
+                            type="number"
+                        ></v-text-field>
                     </v-col>
                     <v-col>
                         <v-text-field
@@ -147,5 +169,17 @@ const cancelItem = (item: InputWrapper, index: number) => {
 const getActualIndex = (index: number): number => { 
     return (page.value - 1)*itemsPerPage.value + index 
 }
+
+const arrayChunkedInputs = computed(() => { 
+    const chunkedArray: InputWrapper[][] = [];
+    for(let i = 0; i < pageCount.value; i++) { 
+        const chunk = [];
+        for(let j = 0; j < itemsPerPage.value; j++) { 
+            chunk.push(props.inputs[i * itemsPerPage.value + j]);
+        }
+        chunkedArray.push(chunk);
+    }
+    return chunkedArray;
+});
 
 </script>

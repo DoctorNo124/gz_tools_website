@@ -20,23 +20,9 @@
                     <v-col>
                         <v-btn @click="downloadNewFile" class="mr-5" :disabled="!base64">Download File</v-btn>
                     </v-col>
-                    <v-col>
-                        <v-btn @click="showChangesDialog = true">Show Changes</v-btn>
-                    </v-col>
                 </template>
             </input-data-table>
         </v-row>
-        <v-dialog v-model="showChangesDialog">
-            <v-card>
-                <v-card-title>Additions</v-card-title>
-                <input-data-table class="mb-5" :inputs="addInputs" :headers="headers"></input-data-table>
-                <v-card-title>Modifications</v-card-title>
-                <input-data-table class="mb-5" :inputs="modifyInputs" :headers="headers"></input-data-table>
-                <v-card-title>Deletions</v-card-title>
-                <v-list :items="deleteInputs" class="mb-5"></v-list>
-                <v-btn @click="showChangesDialog = false">Close</v-btn>
-            </v-card>
-        </v-dialog>
         <v-dialog v-if="inputWrapperToAdd" v-model ="showAddDialog">
            <v-card>
                 <v-card-title>Add Input</v-card-title>
@@ -129,8 +115,8 @@ const addInputFromDialog = () => {
 }
 
 const modifyInput = (item: InputWrapper) => { 
-    item.isEditable = true;
     const originalModifyInput = cloneDeep(item);
+    item.isEditable = true;
     originalModifyInputs.value.push(originalModifyInput);
     if(item.isAdded) { 
         item.isEditingAdd = true;
@@ -176,6 +162,7 @@ const cancelItem = (item: InputWrapper, index: number) => {
         inputs.value.splice(index, 1);
     }
     else { 
+        console.log('test');
         const modifyIndex = inputs.value.findIndex((input) => input.id === item.id);
         let matchingOriginalModifyInputIndex = -1;
         let matchingOriginalModifyInput: InputWrapper | undefined= undefined;
@@ -258,8 +245,6 @@ const deleteItem = (item: InputWrapper, index: number) => {
         }
     }
 };
-
-const showChangesDialog = ref(false);
 
 const downloadNewFile = async () => { 
     const response = (await fetch(import.meta.env.VITE_API_URL + '/GzMacro/inputs',
