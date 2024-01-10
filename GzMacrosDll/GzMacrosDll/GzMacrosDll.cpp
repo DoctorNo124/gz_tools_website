@@ -1,43 +1,48 @@
 // GzMacrosDll.cpp : Defines the exported functions for the DLL.
 //
-extern "C" { 
-	#include "gzm.h"
+extern "C"
+{
+#include "gzm.h"
 }
 #include <stdio.h>
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
+#include <emscripten/val.h>
 
 #define EXTERN EMSCRIPTEN_KEEPALIVE
 
-class FileOutput {
-private:
-	uint8_t* bytes;
-	uint32_t n_bytes;
-	
-public: 
-	FileOutput() { 
+class Test
+{
+public:
+    Test(int i, int j)
+    {
+        _i = i;
+        _j = j;
+    }
+    int _i;
+    int _j;
 
-	}
-	FileOutput(uint8_t* _bytes, uint32_t _n_bytes): bytes(_bytes), n_bytes(_n_bytes) { 
+    int getI() const
+    {
+        return _i;
+    }
 
-	}
+    int getJ() const
+    {
+        return _j;
+    }
+};
 
-	uint8_t* getBytes() const { 
-		return bytes; 
-	}
-
-	uint32_t getNBytes() const { 
-		return n_bytes;
-	}
-};	
-
-EXTERN int set_gzmacro(uint8_t* data, struct gz_macro* gzm, size_t size) {
+EXTERN int
+set_gzmacro(uint8_t *data, struct gz_macro *gzm, size_t size)
+{
     gzm_read(gzm, data, size);
 
     return 0;
 }
 
-EXTERN int cat_gzmacro(uint8_t* gzmData1, size_t gzmDataSize1, uint8_t* gzmData2, size_t gzmDataSize2) {
+EXTERN int cat_gzmacro(uint8_t *gzmData1, size_t gzmDataSize1, uint8_t *gzmData2, size_t gzmDataSize2)
+{
 
     struct gz_macro gzm1;
     struct gz_macro gzm2;
@@ -53,14 +58,16 @@ EXTERN int cat_gzmacro(uint8_t* gzmData1, size_t gzmDataSize1, uint8_t* gzmData2
     return 0;
 }
 
-EXTERN int update_inputs_gzmacro(struct gz_macro* gzm, struct movie_input* input, uint8_t* bytes) {
+EXTERN int update_inputs_gzmacro(struct gz_macro *gzm, struct movie_input *input, uint8_t *bytes)
+{
     gzm_update_inputs(gzm, input);
     struct file_output output;
     gzm_write(gzm, &output);
     return 0;
 }
 
-EXTERN int get_trim_gzmacro_size(uint8_t* data, size_t size, uint32_t end) {
+EXTERN int get_trim_gzmacro_size(uint8_t *data, size_t size, uint32_t end)
+{
     struct gz_macro gzm;
 
     gzm_read(&gzm, data, size);
@@ -73,7 +80,69 @@ EXTERN int get_trim_gzmacro_size(uint8_t* data, size_t size, uint32_t end) {
     return output.n_bytes;
 }
 
-EXTERN uint8_t* get_trim_gzmacro_size_bytes(uint8_t* data, size_t size, uint32_t end) {
+std::vector<uint8_t> trim_gzmacro(uint8_t *data, int size, uint32_t end)
+{
+    struct gz_macro gzm;
+
+    gzm_read(&gzm, data, size);
+
+    gzm_trim(&gzm, end);
+
+    struct file_output output;
+    gzm_write(&gzm, &output);
+    std::vector<uint8_t> vector;
+    for (int i = 0; i < output.n_bytes; i++)
+    {
+        vector.push_back(output.bytes[i]);
+    }
+    return vector;
+}
+
+std::vector<uint8_t> trim_gzmacro(intptr_t data, int size, double end)
+{
+    return trim_gzmacro(reinterpret_cast<uint8_t *>(data), size, static_cast<uint32_t>(end));
+}
+
+int test_function(const movie_input *inputs)
+{
+    return 0;
+}
+
+int test_function(intptr_t inputs)
+{
+    return test_function((movie_input *)(inputs));
+}
+
+int test_function2(const emscripten::val &arrayObject)
+{
+    int length = arrayObject["length"].as<int>();
+    auto testValue = arrayObject[0];
+    int j = testValue["j"].as<int>();
+    auto data = arrayObject.data();
+    return length;
+}
+
+EMSCRIPTEN_BINDINGS(new_file_output)
+{
+    emscripten::register_vector<uint8_t>("vector<uint8_t>");
+    emscripten::function("trim_gzmacro", emscripten::select_overload<std::vector<uint8_t>(intptr_t, int, double)>(&trim_gzmacro));
+    emscripten::value_object<z64_controller_t>("z64_controller_t")
+        .field("pad", &z64_controller_t::pad)
+        .field("x", &z64_controller_t::x)
+        .field("y", &z64_controller_t::y);
+    emscripten::value_object<movie_input>("movie_seed")
+        .field("raw", &movie_input::raw)
+        .field("pad_delta", &movie_input::pad_delta);
+    emscripten::function("test_function", emscripten::select_overload<int(intptr_t)>(&test_function));
+    emscripten::class_<Test>("Test")
+        .constructor<int, int>()
+        .property("i", &Test::getI)
+        .property("j", &Test::getJ);
+    emscripten::function("test_function2", &test_function2);
+}
+
+EXTERN uint8_t *get_trim_gzmacro_size_bytes(uint8_t *data, size_t size, uint32_t end)
+{
     struct gz_macro gzm;
 
     gzm_read(&gzm, data, size);
@@ -86,8 +155,8 @@ EXTERN uint8_t* get_trim_gzmacro_size_bytes(uint8_t* data, size_t size, uint32_t
     return output.bytes;
 }
 
-
-EXTERN int slice_gzmacro(uint8_t* data, size_t size, uint32_t frame_start, uint32_t frame_end) {
+EXTERN int slice_gzmacro(uint8_t *data, size_t size, uint32_t frame_start, uint32_t frame_end)
+{
     struct gz_macro gzm;
     struct gz_macro outputGzm;
 
@@ -98,12 +167,4 @@ EXTERN int slice_gzmacro(uint8_t* data, size_t size, uint32_t frame_start, uint3
     gzm_write(&outputGzm, &output);
 
     return 0;
-}
-
-EMSCRIPTEN_BINDINGS(file_output) {
-  emscripten::class_<FileOutput>("FileOutput")
-    .constructor<>()
-    .constructor<uint8_t*, uint32_t>()
-    .property("n_bytes", &FileOutput::getNBytes)
-    ;
 }

@@ -6,6 +6,7 @@ import Dashboard from '@/views/Dashboard.vue';
 import EditInputs from '@/views/EditInputs.vue';
 import Trim from '@/views/Trim.vue';
 import Slice from '@/views/Slice.vue';
+import Test from '@/views/Test.vue';
 
 
 const routes = [
@@ -38,6 +39,11 @@ const routes = [
     path: '/slice', 
     component: Slice, 
     name: 'Slice',
+  }, 
+  {
+    path: '/test', 
+    component: Test, 
+    name: 'Test',
   }
 ]
 

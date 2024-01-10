@@ -18,33 +18,20 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import download from 'downloadjs';
-import { Wasi } from '@/assets/wasi';
 
 const files = ref<File[]>([]);
 const end = ref<number>();
 const filename = ref<string>();
 
-const wasi = new Wasi({
-    __memory_base: 0,
-    __table_base: 0,
-    memory: new WebAssembly.Memory({initial: 1})
-  }, "stdio", [])
 const trimMacro = async () => { 
-    const { instance } = await WebAssembly.instantiateStreaming(fetch("pleasework.wasm"), { wasi_snapshot_preview1: wasi
-} as any);
-
     // eslint-disable-next-line
-    const api = {
-        trim_gzmacro: Module.cwrap("_Z12trim_gzmacroPhmj", "number", ["number", "number", "number"])
-    }
-    debugger;
     const buffer = await files.value[0].arrayBuffer();
     const bytes = new Uint8Array(buffer);
     var heapSpace = Module._malloc(bytes.length, bytes.BYTES_PER_ELEMENT);
-    Module.HEAP8.set(bytes, heapSpace)
-    const n_bytes = Module.__Z21get_trim_gzmacro_sizePhmj(heapSpace, bytes.length, end.value)
-    const newBytesPtr = Module.__Z27get_trim_gzmacro_size_bytesPhmj(heapSpace, bytes.length, end.value)
-    const newArray = Module.HEAPU8.subarray(newBytesPtr, newBytesPtr + n_bytes)
+    console.log(bytes.length);
+    Module.HEAP8.set(bytes, heapSpace);
+    const bytesVector = Module.trim_gzmacro(heapSpace, bytes.length, Number(end.value));
+    const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
     const blob = new Blob([newArray]);
     download(blob, filename.value ?? 'test.gzm', 'application/octet-stream')
 };

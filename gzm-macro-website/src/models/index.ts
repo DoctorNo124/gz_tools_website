@@ -7,3 +7,4 @@ export { InputButtonType } from './InputButtonType';
 export type { default as InputButtons } from './InputButtons';
 export type { default as UpdateInputsRequest } from './UpdateInputsRequest';
 export type { default as InputWrapper } from './InputWrapper';
+export type { default as MovieSeed } from './MovieSeed';

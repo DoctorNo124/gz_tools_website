@@ -247,6 +247,11 @@ const deleteItem = (item: InputWrapper, index: number) => {
 };
 
 const downloadNewFile = async () => { 
+    // const macro = gzMacroWrapper.value?.macro;
+    // for(const modifyRequest of modifyInputs.value) { 
+    //     gzMacroWrapper.value?.inputs[]
+    // }
+
     const response = (await fetch(import.meta.env.VITE_API_URL + '/GzMacro/inputs',
     {
         method: 'POST',
@@ -263,6 +268,19 @@ const downloadNewFile = async () => {
     const newFile = await response.blob();
     download(newFile, files.value[0].name, 'application/octet-stream')
 }
+const setInputsOnPad = (pad: number, inputButtons : InputButtons[]) => { 
+    for(const button of inputButtons) { 
+        if(button.isButtonPressed) { 
+            pad = pad | (1 << button.buttonType);
+        }
+        else { 
+            pad = pad & ~(1 << button.buttonType);
+        }
+    }
+}
+
+
+
 
 const headers = [   
     {
