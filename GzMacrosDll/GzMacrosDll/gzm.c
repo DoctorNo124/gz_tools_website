@@ -5,25 +5,40 @@
 #include <string.h>
 
 #include "gzm.h"
-#include "files.h"
+#ifdef _WIN32 
+#define SWAP_LONG _byteswap_ulong
+#define SWAP_SHORT _byteswap_ushort
+#else
+#define SWAP_LONG __builtin_bswap32
+#define SWAP_SHORT __builtin_bswap16
+#endif
 
 static void
 bswap(void* dst, const void* data, size_t size)
 {
     switch (size)
     {
-        case sizeof(uint32_t) :
-            *(uint32_t*)(dst) = __builtin_bswap32(*(uint32_t*)(data));
+        case sizeof(uint32_t) : { 
+            uint32_t value = *(uint32_t*)(data);
+            uint32_t swapped = ((value>>24)&0xff) | // move byte 3 to byte 0
+                                ((value<<8)&0xff0000) | // move byte 1 to byte 2
+                                ((value>>8)&0xff00) | // move byte 2 to byte 1
+                                ((value<<24)&0xff000000); // byte 0 to byte 3
+            *(uint32_t*)(dst) = swapped;
             break;
-            case sizeof(uint16_t) :
-                *(uint16_t*)(dst) = __builtin_bswap16(*(uint16_t*)(data));
-                break;
-                case sizeof(uint8_t) :
-                    *(uint8_t*)(dst) = *(uint8_t*)(data);
-                    break;
-                default:
-                    fprintf(stderr, "Bad size: %lu\n", size);
-                    exit(EXIT_FAILURE);
+        }
+        case sizeof(uint16_t) : { 
+            uint16_t value = *(uint16_t*)(data);
+            uint16_t swapped = (value >> 8) | (value < 8);
+            *(uint16_t*)(dst) = swapped;
+            break;
+        }
+        case sizeof(uint8_t) :
+            *(uint8_t*)(dst) = *(uint8_t*)(data);
+        break;
+            default:
+                fprintf(stderr, "Bad size: %lu\n", size);
+                exit(EXIT_FAILURE);
     }
 }
 
@@ -154,7 +169,7 @@ eof:
 }
 
 int
-gzm_write(const struct gz_macro* gzm, file_output* output)
+gzm_write(const struct gz_macro* gzm, struct file_output* output)
 {
     size_t i;
     size_t size = GZM_SERIAL_SIZE(gzm);

@@ -1,6 +1,7 @@
 #ifndef GZM_H_
 #define GZM_H_
 #include <stdint.h>
+#include <stdio.h>
 
 #define PAD_A(pad)   (((pad) >> 15) & 1)
 #define PAD_B(pad)   (((pad) >> 14) & 1)
@@ -106,7 +107,7 @@ struct gz_macro
 int gzm_read(struct gz_macro* gzm, uint8_t* data, size_t size);
 
 int
-gzm_write(const struct gz_macro* gzm, file_output* output);
+gzm_write(const struct gz_macro* gzm, struct file_output* output);
 
 // New/Free
 
@@ -152,5 +153,6 @@ gzm_slice(struct gz_macro* output_gzm, const struct gz_macro* input_gzm, uint32_
 
 int 
 gzm_update_inputs(struct gz_macro* gzm, struct movie_input* input);
+
 
 #endif
