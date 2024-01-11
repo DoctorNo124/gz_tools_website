@@ -33,10 +33,19 @@ std::vector<uint8_t> cat_gzmacro(std::string gzmData1, size_t gzmDataSize1, std:
     return vector;
 }
 
-static void set_input_wrappers(struct input_wrapper* inputs, int n_inputs, const emscripten::val &request_inputs) { 
-    for(int i = 0; i < n_inputs; i++) {
+static void set_input_wrappers(struct update_inputs_request* request, const emscripten::val &request_inputs) { 
+    for(int i = 0; i < request->n_update_inputs; i++) {
         struct input_wrapper wrapper;
         auto request_input = request_inputs[i];
+        bool isDelete = request_input["isDelete"].as<bool>();
+        wrapper.is_delete = isDelete;
+        wrapper.frame_index = request_input["frameIndex"].as<int>();
+        if(isDelete) { 
+            request->update_inputs[i] = wrapper;
+            continue;
+        }
+        wrapper.is_modify = request_input["isModify"].as<bool>();
+        wrapper.is_add = request_input["isAdd"].as<bool>();
         auto request_input_buttons = request_input["inputButtons"];
         wrapper.input_buttons = (struct input_button*)malloc(15*sizeof(input_button));
         for(int j = 0; j < 15; j++) {
@@ -50,7 +59,7 @@ static void set_input_wrappers(struct input_wrapper* inputs, int n_inputs, const
         wrapper.x = request_input["x"].as<int8_t>();
         wrapper.y = request_input["y"].as<int8_t>();
         wrapper.pad_delta = request_input["padDelta"].as<uint16_t>();
-        inputs[i] = wrapper;
+        request->update_inputs[i] = wrapper;
     }
 }
 
@@ -62,22 +71,10 @@ std::vector<uint8_t> update_inputs_gzmacro(std::string data, int size, const ems
 
     struct update_inputs_request update_inputs_request;
 
-    auto request_add_inputs = request["addInputs"];
-    update_inputs_request.n_add_inputs = request_add_inputs["length"].as<int>();
-    update_inputs_request.add_inputs = (struct input_wrapper*)malloc(update_inputs_request.n_add_inputs*sizeof(struct input_wrapper));
-    set_input_wrappers(update_inputs_request.add_inputs, update_inputs_request.n_add_inputs, request_add_inputs);
-
-    auto request_modify_inputs = request["modifyInputs"];
-    update_inputs_request.n_modify_inputs = request_modify_inputs["length"].as<int>();
-    update_inputs_request.modify_inputs = (struct input_wrapper*)malloc(update_inputs_request.n_modify_inputs*sizeof(struct input_wrapper));
-    set_input_wrappers(update_inputs_request.modify_inputs, update_inputs_request.n_modify_inputs, request_modify_inputs);
-
-    auto request_delete_inputs = request["deleteInputsFrameIndexes"];
-    update_inputs_request.n_delete_inputs = request_delete_inputs["length"].as<int>();
-    update_inputs_request.delete_input_indexes = (int*)malloc(update_inputs_request.n_delete_inputs * sizeof(int));
-    for(int i = 0; i < update_inputs_request.n_delete_inputs; i++) {
-        update_inputs_request.delete_input_indexes[i] = request_delete_inputs[i].as<int>();
-    }
+    auto request_add_inputs = request["updateInputs"];
+    update_inputs_request.n_update_inputs = request_add_inputs["length"].as<int>();
+    update_inputs_request.update_inputs = (struct input_wrapper*)malloc(update_inputs_request.n_update_inputs*sizeof(struct input_wrapper));
+    set_input_wrappers(&update_inputs_request, request_add_inputs);
 
     gzm_update_inputs(&gzm, &update_inputs_request);
     struct file_output output;

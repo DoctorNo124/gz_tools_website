@@ -33,16 +33,15 @@ struct input_wrapper
     int8_t x; 
     int8_t y;
     uint16_t pad_delta;   /* 0x0004 */
+    bool is_add;
+    bool is_modify; 
+    bool is_delete;
 };
 
 struct update_inputs_request
 {
-    int32_t n_add_inputs;
-    struct input_wrapper* add_inputs;
-    int32_t n_modify_inputs;
-    struct input_wrapper* modify_inputs;
-    int32_t n_delete_inputs;
-    int* delete_input_indexes;
+    int32_t n_update_inputs;
+    struct input_wrapper* update_inputs;
 };
 
 typedef struct

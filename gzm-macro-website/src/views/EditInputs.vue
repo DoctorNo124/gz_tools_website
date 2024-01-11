@@ -53,9 +53,7 @@ const files = ref<File[]>([]);
 const macro = ref<GzMacro>();
 const uint8Array = ref<Uint8Array>();
 const inputs = ref<InputWrapper[]>([]);
-const addInputs = ref<InputWrapper[]>([]);
-const deleteInputs = ref<number[]>([]);
-const modifyInputs = ref<InputWrapper[]>([]);
+const updateInputs = ref<InputWrapper[]>([]);
 const originalModifyInputs = ref<InputWrapper[]>([]);
 const inputKeys = Object.keys(InputButtonType).filter((v) => isNaN(Number(v)));
 const inputValues = Object.values(InputButtonType).filter((v) => !isNaN(Number(v))).sort((a, b) => Number(b) - Number(a));
@@ -75,21 +73,17 @@ const initialInputWrapper: InputWrapper =  {
     padDelta: 0, 
     inputButtons: inputButtons, 
     isEditable: true,
-    isAdded: true,
+    isAdd: false, 
+    isDelete: false, 
+    isModify: false,
 };
 
 
 const addInput = (item: InputWrapper, index: number) => { 
     const inputWrapperToAdd = cloneDeep(initialInputWrapper);
+    inputWrapperToAdd.isAdd = true;
     inputWrapperToAdd.id = uuidv4();
-    if(item.isAdded && item.addOrder) { 
-        inputWrapperToAdd.addOrder = item.addOrder + 1;
-    }
-    else { 
-        inputWrapperToAdd.addOrder = 1;
-    }
-    inputWrapperToAdd.frameIndex = index + 1;
-    inputs.value.splice(inputWrapperToAdd.frameIndex, 0, inputWrapperToAdd);
+    inputs.value.splice(index + 1, 0, inputWrapperToAdd);
 }
 
 const showAddDialog = ref(false);
@@ -107,7 +101,8 @@ const closeAddDialog = () => {
 }
 const addInputFromDialog = () => { 
     if(inputWrapperToAdd.value) { 
-        addInputs.value.push(inputWrapperToAdd.value);
+        inputWrapperToAdd.value.isAdd = true;
+        updateInputs.value.push(inputWrapperToAdd.value);
         inputs.value.push(inputWrapperToAdd.value);
         closeAddDialog();
     }
@@ -117,12 +112,16 @@ const modifyInput = (item: InputWrapper) => {
     const originalModifyInput = cloneDeep(item);
     item.isEditable = true;
     originalModifyInputs.value.push(originalModifyInput);
-    if(item.isAdded) { 
+    if(item.isAdd) { 
         item.isEditingAdd = true;
+    }
+    else { 
+        item.isModify = true;
     }
 }
 
-const saveItem = (item: InputWrapper) => { 
+const saveItem = (item: InputWrapper, index: number) => { 
+    item.frameIndex = index;
     item.x = Number(item.x);
     item.y = Number(item.y);
     item.padDelta = Number(item.padDelta);
@@ -130,28 +129,14 @@ const saveItem = (item: InputWrapper) => {
         item.padDelta = parseInt(item.bitPadDelta, 2);
     }
     item.isEditable = false;
-    if(item.isAdded && item.addOrder) {
-        if(item.isEditingAdd) { 
-            const matchingAddedInputIndex = addInputs.value.findIndex((addInput) => addInput.id === item.id);
-            if(matchingAddedInputIndex !== -1) { 
-                addInputs.value[matchingAddedInputIndex] = cloneDeep(item);
-            }
-        }
-        else { 
-            const inputToAdd = cloneDeep(item);
-            if(inputToAdd.frameIndex) { 
-                inputToAdd.frameIndex -= item.addOrder;
-            }
-            addInputs.value.push(inputToAdd);
+    if(item.isAdd) {
+        if(!item.isEditingAdd) { 
+            updateInputs.value.push(item);
         }
     }
-    else { 
-        const index = modifyInputs.value.findIndex((input) => input.id === item.id);
-        if(index !== -1) { 
-            modifyInputs.value[index] = item;
-        }
-        else { 
-            modifyInputs.value.push(cloneDeep(item));
+    else if (item.isModify) { 
+        if(!updateInputs.value.some((input) => input.id === item.id)) { 
+            updateInputs.value.push(item);
         }
         const originalModifyInputIndex = originalModifyInputs.value.findIndex((input) => input.id === item.id);
         originalModifyInputs.value.splice(originalModifyInputIndex, 1);
@@ -160,11 +145,10 @@ const saveItem = (item: InputWrapper) => {
 }
 
 const cancelItem = (item: InputWrapper, index: number) => { 
-    if(item.isAdded) { 
+    if(item.isAdd) { 
         inputs.value.splice(index, 1);
     }
     else { 
-        console.log('test');
         const modifyIndex = inputs.value.findIndex((input) => input.id === item.id);
         let matchingOriginalModifyInputIndex = -1;
         let matchingOriginalModifyInput: InputWrapper | undefined= undefined;
@@ -178,6 +162,10 @@ const cancelItem = (item: InputWrapper, index: number) => {
         }
         if(matchingOriginalModifyInput) { 
             inputs.value[modifyIndex] = matchingOriginalModifyInput;
+            const matchingUpdateInputIndex = updateInputs.value.findIndex((input) => input.id === item.id);
+            if(matchingUpdateInputIndex !== -1) { 
+                updateInputs.value[matchingUpdateInputIndex] = matchingOriginalModifyInput;
+            }
             originalModifyInputs.value.splice(matchingOriginalModifyInputIndex, 1);
         }
     }
@@ -191,9 +179,8 @@ const getMacroFromFile = async (newFiles: File[]) => {
 };
 
 const resetInputs = () => { 
-    addInputs.value = [];
-    deleteInputs.value = []; 
-    modifyInputs.value = [];
+    updateInputs.value = [];
+    originalModifyInputs.value = [];
     inputs.value = [];
     populateInputs();
 }
@@ -225,29 +212,31 @@ const populateInputs = () => {
             y: input.raw.y, 
             padDelta: input.pad_delta,
             isEditable: false,
+            isAdd: false,
+            isDelete: false,
+            isModify: false,
         })
     });
-    if(inputs.value.length === 5001) { 
-        console.log(inputs.value[5000]);
-    }
 }
 
 const deleteItem = (item: InputWrapper, index: number) => { 
     inputs.value.splice(index, 1);
-    if(item.isAdded) { 
-        const matchingAddInputsIndex = addInputs.value.findIndex((input) => item.id === input.id);
+    if(item.isAdd) { 
+        const matchingAddInputsIndex = updateInputs.value.findIndex((input) => item.id === input.id);
         if(matchingAddInputsIndex !== -1) { 
-            addInputs.value.splice(matchingAddInputsIndex, 1);
+            updateInputs.value.splice(matchingAddInputsIndex, 1);
         }
     }
     else { 
-        const matchingModifyInputsIndex = modifyInputs.value.findIndex((input) => item.id === input.id);
-        if(matchingModifyInputsIndex !== -1) {
-            modifyInputs.value.splice(matchingModifyInputsIndex, 1);
+        if (item.isModify) { 
+            const matchingModifyInputsIndex = updateInputs.value.findIndex((input) => item.id === input.id);
+            if(matchingModifyInputsIndex !== -1) {
+                updateInputs.value.splice(matchingModifyInputsIndex, 1);
+            }
         }
-        if(item.frameIndex) { 
-            deleteInputs.value.push(item.frameIndex);
-        }
+        item.isDelete = true;
+        item.frameIndex = index;
+        updateInputs.value.push(item);
     }
 };
 
@@ -260,9 +249,7 @@ const downloadNewFile = async () => {
         const bytes = uint8Array.value;
         
         const bytesVector = Module.update_inputs_gzmacro(bytes, bytes.length, {
-            addInputs: addInputs.value, 
-            modifyInputs: modifyInputs.value, 
-            deleteInputsFrameIndexes: deleteInputs.value,
+            updateInputs: updateInputs.value
         });
         const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
         uint8Array.value = newArray;

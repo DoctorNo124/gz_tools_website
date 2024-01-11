@@ -22,7 +22,7 @@
                         <v-icon
                         size="small"
                         class="me-2"
-                        @click="saveItem(item)"
+                        @click="saveItem(item, getActualIndex(index))"
                         >
                             mdi-content-save
                         </v-icon>
@@ -158,8 +158,8 @@ const addItem = (item: InputWrapper, index: number) => {
     emits("add-item", item, index);
 }
 
-const saveItem = (item: InputWrapper) => { 
-    emits("save-item", item);
+const saveItem = (item: InputWrapper, index: number) => { 
+    emits("save-item", item, index);
 }
 
 const cancelItem = (item: InputWrapper, index: number) => { 

@@ -754,45 +754,30 @@ void gzm_print_seeds(const struct gz_macro *gzm)
 
 int gzm_update_inputs(struct gz_macro *gzm, struct update_inputs_request *request)
 {
-    for(int i = 0; i < request->n_modify_inputs; i++) { 
-        struct input_wrapper inputWrapper = request->modify_inputs[i];
-        gzm->input[inputWrapper.frame_index] = get_movie_input(&inputWrapper, gzm->input[inputWrapper.frame_index].raw.pad);
-    }
-    for(int i = 0; i < request->n_delete_inputs; i++) { 
-        int delete_frame_index = request->delete_input_indexes[i];
-        for(int j = 0; j < i; j++) { 
-            if(request->delete_input_indexes[j] < delete_frame_index) { 
-                delete_frame_index--;
+    for(int i = 0; i < request->n_update_inputs; i++) { 
+        struct input_wrapper inputWrapper = request->update_inputs[i];
+        if(inputWrapper.is_modify) { 
+            gzm->input[inputWrapper.frame_index] = get_movie_input(&inputWrapper, gzm->input[inputWrapper.frame_index].raw.pad);
+        }
+        else if (inputWrapper.is_delete) { 
+            for(int i = inputWrapper.frame_index; i < gzm->n_input; i++) { 
+                gzm->input[i] = gzm->input[i + 1];
             }
+            gzm->n_input--;
+            gzm->input = realloc(gzm->input, gzm->n_input * sizeof(struct movie_input));
         }
-        for(int i = delete_frame_index; i < gzm->n_input; i++) { 
-            gzm->input[i] = gzm->input[i + 1];
-        }
-        gzm->n_input--;
-        gzm->input = realloc(gzm->input, gzm->n_input * sizeof(struct movie_input));
-    }
-    for(int i = 0; i < request->n_add_inputs; i++) {
-        struct input_wrapper inputWrapper = request->add_inputs[i];
-        for(int j = 0; j < request->n_delete_inputs; j++) { 
-            if(request->delete_input_indexes[j] < inputWrapper.frame_index) { 
-                inputWrapper.frame_index--;
+        else if (inputWrapper.is_add) { 
+            if(inputWrapper.frame_index < gzm->n_input) {
+                gzm->input = realloc(gzm->input, (gzm->n_input + 1) * sizeof(struct movie_input));
+                memmove(&gzm->input[inputWrapper.frame_index + 1], &gzm->input[inputWrapper.frame_index], (gzm->n_input - (inputWrapper.frame_index))*sizeof(struct movie_input));
+                gzm->n_input++;
+                gzm->input[inputWrapper.frame_index] = get_movie_input(&inputWrapper, 0);
             }
-        }
-        for(int j = 0; j < i; j++) {
-            if(request->add_inputs[j].frame_index <= inputWrapper.frame_index) {
-                inputWrapper.frame_index++;
+            else { 
+                gzm->n_input++;
+                gzm->input = realloc(gzm->input, (gzm->n_input) * sizeof(struct movie_input));
+                gzm->input[gzm->n_input - 1] = get_movie_input(&inputWrapper, 0);
             }
-        }
-        if(inputWrapper.frame_index < gzm->n_input) {
-            gzm->input = realloc(gzm->input, (gzm->n_input + 1) * sizeof(struct movie_input));
-            memmove(&gzm->input[inputWrapper.frame_index + 2], &gzm->input[inputWrapper.frame_index + 1], (gzm->n_input - (inputWrapper.frame_index + 1))*sizeof(struct movie_input));
-            gzm->n_input++;
-            gzm->input[inputWrapper.frame_index + 1] = get_movie_input(&inputWrapper, 0);
-        }
-        else { 
-            gzm->n_input++;
-            gzm->input = realloc(gzm->input, (gzm->n_input) * sizeof(struct movie_input));
-            gzm->input[gzm->n_input - 1] = get_movie_input(&inputWrapper, 0);
         }
     }
     return 0;
