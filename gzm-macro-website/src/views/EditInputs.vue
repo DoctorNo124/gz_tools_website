@@ -1,6 +1,6 @@
 <template>
     <v-container>
-        <v-row :class="{ 'mt-10': gzMacroWrapper}">
+        <v-row :class="{ 'mt-10': macro }">
             <v-file-input
                 v-model="files"
                 :rules="[(v) => v.length != 0 || 'File cannot be empty']"
@@ -18,7 +18,7 @@
                         <v-btn @click="openAddDialog" class="mr-5">Add Input</v-btn>
                     </v-col>
                     <v-col>
-                        <v-btn @click="downloadNewFile" class="mr-5" :disabled="!base64">Download File</v-btn>
+                        <v-btn @click="downloadNewFile" class="mr-5" :disabled="!macro">Download File</v-btn>
                     </v-col>
                 </template>
             </input-data-table>
@@ -42,16 +42,16 @@
   
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { fileToBase64 } from 'file64';
-import { GzMacroWrapper, InputButtonType, InputButtons, InputWrapper } from '@/models'
-import axios from 'axios';
+import { GzMacro, InputButtonType, InputButtons, InputWrapper } from '@/models'
 import { cloneDeep } from 'lodash';
 import InputDataTable from '@/components/InputDataTable.vue';
 import { v4 as uuidv4 } from 'uuid';
 import download from 'downloadjs';
+import { getFileAsGZM, getBytesAsGZM } from '@/util/GZMHelpers';
 
 const files = ref<File[]>([]);
-const gzMacroWrapper = ref<GzMacroWrapper>();
+const macro = ref<GzMacro>();
+const uint8Array = ref<Uint8Array>();
 const inputs = ref<InputWrapper[]>([]);
 const addInputs = ref<InputWrapper[]>([]);
 const deleteInputs = ref<number[]>([]);
@@ -59,7 +59,6 @@ const modifyInputs = ref<InputWrapper[]>([]);
 const originalModifyInputs = ref<InputWrapper[]>([]);
 const inputKeys = Object.keys(InputButtonType).filter((v) => isNaN(Number(v)));
 const inputValues = Object.values(InputButtonType).filter((v) => !isNaN(Number(v))).sort((a, b) => Number(b) - Number(a));
-const base64 = ref<string>();
 
 const inputButtons: InputButtons[] = [];
 inputKeys.forEach((key => { 
@@ -124,6 +123,9 @@ const modifyInput = (item: InputWrapper) => {
 }
 
 const saveItem = (item: InputWrapper) => { 
+    item.x = Number(item.x);
+    item.y = Number(item.y);
+    item.padDelta = Number(item.padDelta);
     if(item.bitPadDelta) { 
         item.padDelta = parseInt(item.bitPadDelta, 2);
     }
@@ -182,22 +184,22 @@ const cancelItem = (item: InputWrapper, index: number) => {
 }
 
 const getMacroFromFile = async (newFiles: File[]) => { 
-    base64.value = (await fileToBase64(newFiles[0])).split('base64,')[1];
-    await getMacro();
+    macro.value = await getFileAsGZM(newFiles[0])
+    const buffer = await files.value[0].arrayBuffer()
+    uint8Array.value = new Uint8Array(buffer);
+    resetInputs();
 };
 
-const getMacro = async () => { 
+const resetInputs = () => { 
     addInputs.value = [];
     deleteInputs.value = []; 
     modifyInputs.value = [];
     inputs.value = [];
-    const axiosResponse = (await axios.post<GzMacroWrapper>(import.meta.env.VITE_API_URL + '/GzMacro/stats', { base64: base64.value }));
-    gzMacroWrapper.value = axiosResponse.data;
     populateInputs();
 }
 
 const populateInputs = () => { 
-    gzMacroWrapper.value?.inputs.forEach((input, index) => { 
+    macro.value?.inputs.forEach((input, index) => { 
         const inputButtons: InputButtons[] = [];
         const pad = input.raw.pad;
         inputValues.forEach((value, index) => { 
@@ -225,6 +227,9 @@ const populateInputs = () => {
             isEditable: false,
         })
     });
+    if(inputs.value.length === 5001) { 
+        console.log(inputs.value[5000]);
+    }
 }
 
 const deleteItem = (item: InputWrapper, index: number) => { 
@@ -251,36 +256,25 @@ const downloadNewFile = async () => {
     // for(const modifyRequest of modifyInputs.value) { 
     //     gzMacroWrapper.value?.inputs[]
     // }
-
-    const response = (await fetch(import.meta.env.VITE_API_URL + '/GzMacro/inputs',
-    {
-        method: 'POST',
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            base64: base64.value, 
+    if(uint8Array.value) { 
+        const bytes = uint8Array.value;
+        
+        const bytesVector = Module.update_inputs_gzmacro(bytes, bytes.length, {
             addInputs: addInputs.value, 
             modifyInputs: modifyInputs.value, 
             deleteInputsFrameIndexes: deleteInputs.value,
-        }),
-    }));
-    const newFile = await response.blob();
-    download(newFile, files.value[0].name, 'application/octet-stream')
-}
-const setInputsOnPad = (pad: number, inputButtons : InputButtons[]) => { 
-    for(const button of inputButtons) { 
-        if(button.isButtonPressed) { 
-            pad = pad | (1 << button.buttonType);
-        }
-        else { 
-            pad = pad & ~(1 << button.buttonType);
-        }
+        });
+        const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
+        uint8Array.value = newArray;
+        const dv = new DataView(newArray.buffer, newArray.byteOffset, newArray.byteLength);
+        macro.value = getBytesAsGZM(dv);
+
+        resetInputs();
+
+        const blob = new Blob([newArray]);
+        download(blob, files.value[0].name, 'application/octet-stream');
     }
 }
-
-
-
 
 const headers = [   
     {

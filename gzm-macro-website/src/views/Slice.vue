@@ -18,7 +18,6 @@
   
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { fileToBase64 } from 'file64';
 import download from 'downloadjs';
 
 const files = ref<File[]>([]);
@@ -27,16 +26,11 @@ const frameEnd = ref<number>();
 const filename = ref<string>();
 
 const sliceMacro = async () => { 
-    const base64 = (await fileToBase64(files.value[0])).split('base64,')[1];
-    const response = (await fetch(import.meta.env.VITE_API_URL + '/GzMacro/slice', 
-    { 
-        method: 'POST',
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ base64: base64, frameStart: frameStart.value, frameEnd: frameEnd.value }),
-    }));
-    const blob = await response.blob();
+    const buffer = await files.value[0].arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const bytesVector = Module.slice_gzmacro(bytes, bytes.length, Number(frameStart.value), Number(frameEnd.value));
+    const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
+    const blob = new Blob([newArray]);
     download(blob, filename.value ?? 'test.gzm', 'application/octet-stream');
 };
 

@@ -31,7 +31,7 @@ bswap(void *dst, const void *data, size_t size)
     case sizeof(uint16_t):
     {
         uint16_t value = *(uint16_t *)(data);
-        uint16_t swapped = (value >> 8) | (value < 8);
+        uint16_t swapped = (value << 8) | (value >> 8);
         *(uint16_t *)(dst) = swapped;
         break;
     }
@@ -752,12 +752,83 @@ void gzm_print_seeds(const struct gz_macro *gzm)
         printf("  frame: %u, old: %08x, new: %08x\n", seeds[i].frame_idx, seeds[i].old_seed, seeds[i].new_seed);
 }
 
-int gzm_update_inputs(struct gz_macro *gzm, struct movie_input *input)
+int gzm_update_inputs(struct gz_macro *gzm, struct update_inputs_request *request)
 {
-    gzm->input = (struct movie_input *)malloc(gzm->n_input * sizeof(struct movie_input));
-    if (input != NULL)
-    {
-        memcpy(&gzm->input[0], input, gzm->n_input * sizeof(struct movie_input));
+    for(int i = 0; i < request->n_modify_inputs; i++) { 
+        struct input_wrapper inputWrapper = request->modify_inputs[i];
+        gzm->input[inputWrapper.frame_index] = get_movie_input(&inputWrapper, gzm->input[inputWrapper.frame_index].raw.pad);
+    }
+    for(int i = 0; i < request->n_delete_inputs; i++) { 
+        int delete_frame_index = request->delete_input_indexes[i];
+        for(int j = 0; j < i; j++) { 
+            if(request->delete_input_indexes[j] < delete_frame_index) { 
+                delete_frame_index--;
+            }
+        }
+        for(int i = delete_frame_index; i < gzm->n_input; i++) { 
+            gzm->input[i] = gzm->input[i + 1];
+        }
+        gzm->n_input--;
+        gzm->input = realloc(gzm->input, gzm->n_input * sizeof(struct movie_input));
+    }
+    for(int i = 0; i < request->n_add_inputs; i++) {
+        struct input_wrapper inputWrapper = request->add_inputs[i];
+        for(int j = 0; j < request->n_delete_inputs; j++) { 
+            if(request->delete_input_indexes[j] < inputWrapper.frame_index) { 
+                inputWrapper.frame_index--;
+            }
+        }
+        for(int j = 0; j < i; j++) {
+            if(request->add_inputs[j].frame_index <= inputWrapper.frame_index) {
+                inputWrapper.frame_index++;
+            }
+        }
+        if(inputWrapper.frame_index < gzm->n_input) {
+            gzm->input = realloc(gzm->input, (gzm->n_input + 1) * sizeof(struct movie_input));
+            memmove(&gzm->input[inputWrapper.frame_index + 2], &gzm->input[inputWrapper.frame_index + 1], (gzm->n_input - (inputWrapper.frame_index + 1))*sizeof(struct movie_input));
+            gzm->n_input++;
+            gzm->input[inputWrapper.frame_index + 1] = get_movie_input(&inputWrapper, 0);
+        }
+        else { 
+            gzm->n_input++;
+            gzm->input = realloc(gzm->input, (gzm->n_input) * sizeof(struct movie_input));
+            gzm->input[gzm->n_input - 1] = get_movie_input(&inputWrapper, 0);
+        }
     }
     return 0;
 }
+
+uint16_t 
+static setBit(uint16_t x, uint16_t i)
+{
+    return x | (1 << i); 
+}
+
+uint16_t
+static clearBit(uint16_t x, uint16_t i)
+{
+    return x & ~(1 << i);
+}
+
+struct movie_input get_movie_input(struct input_wrapper* wrapper, uint16_t pad) {
+    struct movie_input input;
+    for(int i = 0; i < 15; i++) { 
+        struct input_button button = wrapper->input_buttons[i];
+        if(button.is_button_pressed) { 
+            pad = setBit(pad, button.button_type);
+        }
+        else { 
+            pad = clearBit(pad, button.button_type);
+        }
+    }
+    z64_controller_t controller;
+    controller.pad = pad;
+    controller.x = wrapper->x;
+    controller.y = wrapper->y;
+    
+    input.raw = controller;
+    input.pad_delta = wrapper->pad_delta;
+    
+    return input;
+}
+

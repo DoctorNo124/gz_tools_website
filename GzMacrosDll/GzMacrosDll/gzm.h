@@ -19,6 +19,32 @@
 #define PAD_CL(pad) (((pad) >> 1) & 1)
 #define PAD_CR(pad) (((pad) >> 0) & 1)
 
+
+struct input_button 
+{
+    uint16_t button_type;
+    bool is_button_pressed;
+};
+
+struct input_wrapper 
+{
+    struct input_button* input_buttons;
+    int frame_index;
+    int8_t x; 
+    int8_t y;
+    uint16_t pad_delta;   /* 0x0004 */
+};
+
+struct update_inputs_request
+{
+    int32_t n_add_inputs;
+    struct input_wrapper* add_inputs;
+    int32_t n_modify_inputs;
+    struct input_wrapper* modify_inputs;
+    int32_t n_delete_inputs;
+    int* delete_input_indexes;
+};
+
 typedef struct
 {
     uint16_t pad; /* 0x0000 */
@@ -139,6 +165,7 @@ void gzm_print_seeds(const struct gz_macro *gzm);
 
 int gzm_slice(struct gz_macro *output_gzm, const struct gz_macro *input_gzm, uint32_t frame_start, uint32_t frame_end);
 
-int gzm_update_inputs(struct gz_macro *gzm, struct movie_input *input);
+int gzm_update_inputs(struct gz_macro *gzm, struct update_inputs_request *request);
 
+struct movie_input get_movie_input(struct input_wrapper* wrapper, uint16_t pad);
 #endif

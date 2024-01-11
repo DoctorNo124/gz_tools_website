@@ -8,3 +8,6 @@ export type { default as InputButtons } from './InputButtons';
 export type { default as UpdateInputsRequest } from './UpdateInputsRequest';
 export type { default as InputWrapper } from './InputWrapper';
 export type { default as MovieSeed } from './MovieSeed';
+export type { default as MovieOcaSync } from './MovieOcaSync';
+export type { default as MovieOcaInput } from './MovieOcaInput';
+export type { default as MovieRoomLoad } from './MovieRoomLoad';

@@ -1,6 +1,0 @@
-@GzToolsAPI_HostAddress = http://localhost:5035
-
-GET {{GzToolsAPI_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

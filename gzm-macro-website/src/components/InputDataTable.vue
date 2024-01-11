@@ -175,7 +175,10 @@ const arrayChunkedInputs = computed(() => {
     for(let i = 0; i < pageCount.value; i++) { 
         const chunk = [];
         for(let j = 0; j < itemsPerPage.value; j++) { 
-            chunk.push(props.inputs[i * itemsPerPage.value + j]);
+            const item = props.inputs[i * itemsPerPage.value + j];
+            if(item) { 
+                chunk.push(item);
+            }
         }
         chunkedArray.push(chunk);
     }

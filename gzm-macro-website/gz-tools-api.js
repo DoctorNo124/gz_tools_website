@@ -692,7 +692,7 @@ function createExportWrapper(name) {
 // include: runtime_exceptions.js
 // end include: runtime_exceptions.js
 var wasmBinaryFile;
-  wasmBinaryFile = 'bindtest.wasm';
+  wasmBinaryFile = 'gz-tools-api.wasm';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
@@ -1125,21 +1125,24 @@ function dbg(text) {
       assert(false, 'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.');
     };
 
-  var structRegistrations = {
-  };
-  
-  var runDestructors = (destructors) => {
-      while (destructors.length) {
-        var ptr = destructors.pop();
-        var del = destructors.pop();
-        del(ptr);
+  var __embind_register_bigint = (primitiveType, name, size, minRange, maxRange) => {};
+
+  var embind_init_charCodes = () => {
+      var codes = new Array(256);
+      for (var i = 0; i < 256; ++i) {
+          codes[i] = String.fromCharCode(i);
       }
+      embind_charCodes = codes;
     };
-  
-  /** @suppress {globalThis} */
-  function simpleReadValueFromPointer(pointer) {
-      return this['fromWireType'](HEAP32[((pointer)>>2)]);
-    }
+  var embind_charCodes;
+  var readLatin1String = (ptr) => {
+      var ret = "";
+      var c = ptr;
+      while (HEAPU8[c]) {
+          ret += embind_charCodes[HEAPU8[c++]];
+      }
+      return ret;
+    };
   
   var awaitingDependencies = {
   };
@@ -1149,6 +1152,12 @@ function dbg(text) {
   
   var typeDependencies = {
   };
+  
+  var BindingError;
+  var throwBindingError = (message) => { throw new BindingError(message); };
+  
+  
+  
   
   var InternalError;
   var throwInternalError = (message) => { throw new InternalError(message); };
@@ -1191,94 +1200,6 @@ function dbg(text) {
         onComplete(typeConverters);
       }
     };
-  var __embind_finalize_value_object = (structType) => {
-      var reg = structRegistrations[structType];
-      delete structRegistrations[structType];
-  
-      var rawConstructor = reg.rawConstructor;
-      var rawDestructor = reg.rawDestructor;
-      var fieldRecords = reg.fields;
-      var fieldTypes = fieldRecords.map((field) => field.getterReturnType).
-                concat(fieldRecords.map((field) => field.setterArgumentType));
-      whenDependentTypesAreResolved([structType], fieldTypes, (fieldTypes) => {
-        var fields = {};
-        fieldRecords.forEach((field, i) => {
-          var fieldName = field.fieldName;
-          var getterReturnType = fieldTypes[i];
-          var getter = field.getter;
-          var getterContext = field.getterContext;
-          var setterArgumentType = fieldTypes[i + fieldRecords.length];
-          var setter = field.setter;
-          var setterContext = field.setterContext;
-          fields[fieldName] = {
-            read: (ptr) => getterReturnType['fromWireType'](getter(getterContext, ptr)),
-            write: (ptr, o) => {
-              var destructors = [];
-              setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
-              runDestructors(destructors);
-            }
-          };
-        });
-  
-        return [{
-          name: reg.name,
-          'fromWireType': (ptr) => {
-            var rv = {};
-            for (var i in fields) {
-              rv[i] = fields[i].read(ptr);
-            }
-            rawDestructor(ptr);
-            return rv;
-          },
-          'toWireType': (destructors, o) => {
-            // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
-            // assume all fields are present without checking.
-            for (var fieldName in fields) {
-              if (!(fieldName in o)) {
-                throw new TypeError(`Missing field: "${fieldName}"`);
-              }
-            }
-            var ptr = rawConstructor();
-            for (fieldName in fields) {
-              fields[fieldName].write(ptr, o[fieldName]);
-            }
-            if (destructors !== null) {
-              destructors.push(rawDestructor, ptr);
-            }
-            return ptr;
-          },
-          'argPackAdvance': GenericWireTypeSize,
-          'readValueFromPointer': simpleReadValueFromPointer,
-          destructorFunction: rawDestructor,
-        }];
-      });
-    };
-
-  var __embind_register_bigint = (primitiveType, name, size, minRange, maxRange) => {};
-
-  var embind_init_charCodes = () => {
-      var codes = new Array(256);
-      for (var i = 0; i < 256; ++i) {
-          codes[i] = String.fromCharCode(i);
-      }
-      embind_charCodes = codes;
-    };
-  var embind_charCodes;
-  var readLatin1String = (ptr) => {
-      var ret = "";
-      var c = ptr;
-      while (HEAPU8[c]) {
-          ret += embind_charCodes[HEAPU8[c++]];
-      }
-      return ret;
-    };
-  
-  
-  
-  
-  var BindingError;
-  var throwBindingError = (message) => { throw new BindingError(message); };
-  
   /** @param {Object=} options */
   function sharedRegisterType(rawType, registeredInstance, options = {}) {
       var name = registeredInstance.name;
@@ -2222,6 +2143,13 @@ function dbg(text) {
     };
   
   
+  var runDestructors = (destructors) => {
+      while (destructors.length) {
+        var ptr = destructors.pop();
+        var del = destructors.pop();
+        del(ptr);
+      }
+    };
   
   
   
@@ -2491,92 +2419,6 @@ function dbg(text) {
       });
     };
 
-  
-  
-  
-  
-  
-  
-  
-  var validateThis = (this_, classType, humanName) => {
-      if (!(this_ instanceof Object)) {
-        throwBindingError(`${humanName} with invalid "this": ${this_}`);
-      }
-      if (!(this_ instanceof classType.registeredClass.constructor)) {
-        throwBindingError(`${humanName} incompatible with "this" of type ${this_.constructor.name}`);
-      }
-      if (!this_.$$.ptr) {
-        throwBindingError(`cannot call emscripten binding method ${humanName} on deleted object`);
-      }
-  
-      // todo: kill this
-      return upcastPointer(this_.$$.ptr,
-                           this_.$$.ptrType.registeredClass,
-                           classType.registeredClass);
-    };
-  var __embind_register_class_property = (classType,
-                                      fieldName,
-                                      getterReturnType,
-                                      getterSignature,
-                                      getter,
-                                      getterContext,
-                                      setterArgumentType,
-                                      setterSignature,
-                                      setter,
-                                      setterContext) => {
-      fieldName = readLatin1String(fieldName);
-      getter = embind__requireFunction(getterSignature, getter);
-  
-      whenDependentTypesAreResolved([], [classType], function(classType) {
-        classType = classType[0];
-        var humanName = `${classType.name}.${fieldName}`;
-        var desc = {
-          get() {
-            throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
-          },
-          enumerable: true,
-          configurable: true
-        };
-        if (setter) {
-          desc.set = () => throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
-        } else {
-          desc.set = (v) => throwBindingError(humanName + ' is a read-only property');
-        }
-  
-        Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, desc);
-  
-        whenDependentTypesAreResolved(
-          [],
-          (setter ? [getterReturnType, setterArgumentType] : [getterReturnType]),
-      function(types) {
-          var getterReturnType = types[0];
-          var desc = {
-            get() {
-              var ptr = validateThis(this, classType, humanName + ' getter');
-              return getterReturnType['fromWireType'](getter(getterContext, ptr));
-            },
-            enumerable: true
-          };
-  
-          if (setter) {
-            setter = embind__requireFunction(setterSignature, setter);
-            var setterArgumentType = types[1];
-            desc.set = function(v) {
-              var ptr = validateThis(this, classType, humanName + ' setter');
-              var destructors = [];
-              setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, v));
-              runDestructors(destructors);
-            };
-          }
-  
-          Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, desc);
-          return [];
-        });
-  
-        return [];
-      });
-    };
-
   function handleAllocatorInit() {
       Object.assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
         get(id) {
@@ -2659,6 +2501,10 @@ function dbg(text) {
   
   
   
+  /** @suppress {globalThis} */
+  function simpleReadValueFromPointer(pointer) {
+      return this['fromWireType'](HEAP32[((pointer)>>2)]);
+    }
   var __embind_register_emval = (rawType, name) => {
       name = readLatin1String(name);
       registerType(rawType, {
@@ -3291,49 +3137,6 @@ function dbg(text) {
     };
 
   
-  
-  var __embind_register_value_object = (
-      rawType,
-      name,
-      constructorSignature,
-      rawConstructor,
-      destructorSignature,
-      rawDestructor
-    ) => {
-      structRegistrations[rawType] = {
-        name: readLatin1String(name),
-        rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
-        rawDestructor: embind__requireFunction(destructorSignature, rawDestructor),
-        fields: [],
-      };
-    };
-
-  
-  
-  var __embind_register_value_object_field = (
-      structType,
-      fieldName,
-      getterReturnType,
-      getterSignature,
-      getter,
-      getterContext,
-      setterArgumentType,
-      setterSignature,
-      setter,
-      setterContext
-    ) => {
-      structRegistrations[structType].fields.push({
-        fieldName: readLatin1String(fieldName),
-        getterReturnType,
-        getter: embind__requireFunction(getterSignature, getter),
-        getterContext,
-        setterArgumentType,
-        setter: embind__requireFunction(setterSignature, setter),
-        setterContext,
-      });
-    };
-
-  
   var __embind_register_void = (rawType, name) => {
       name = readLatin1String(name);
       registerType(rawType, {
@@ -3684,9 +3487,9 @@ function dbg(text) {
         return ccall(ident, returnType, argTypes, arguments, opts);
       }
     };
-InternalError = Module['InternalError'] = class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }};
 embind_init_charCodes();
 BindingError = Module['BindingError'] = class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }};
+InternalError = Module['InternalError'] = class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }};
 init_ClassHandle();
 init_embind();;
 init_RegisteredPointer();
@@ -3700,8 +3503,6 @@ var wasmImports = {
   /** @export */
   __cxa_throw: ___cxa_throw,
   /** @export */
-  _embind_finalize_value_object: __embind_finalize_value_object,
-  /** @export */
   _embind_register_bigint: __embind_register_bigint,
   /** @export */
   _embind_register_bool: __embind_register_bool,
@@ -3711,8 +3512,6 @@ var wasmImports = {
   _embind_register_class_constructor: __embind_register_class_constructor,
   /** @export */
   _embind_register_class_function: __embind_register_class_function,
-  /** @export */
-  _embind_register_class_property: __embind_register_class_property,
   /** @export */
   _embind_register_emval: __embind_register_emval,
   /** @export */
@@ -3727,10 +3526,6 @@ var wasmImports = {
   _embind_register_std_string: __embind_register_std_string,
   /** @export */
   _embind_register_std_wstring: __embind_register_std_wstring,
-  /** @export */
-  _embind_register_value_object: __embind_register_value_object,
-  /** @export */
-  _embind_register_value_object_field: __embind_register_value_object_field,
   /** @export */
   _embind_register_void: __embind_register_void,
   /** @export */
@@ -3764,12 +3559,6 @@ var wasmImports = {
 };
 var wasmExports = createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors');
-var __Z11set_gzmacroPhP8gz_macrom = Module['__Z11set_gzmacroPhP8gz_macrom'] = createExportWrapper('_Z11set_gzmacroPhP8gz_macrom');
-var __Z11cat_gzmacroPhmS_m = Module['__Z11cat_gzmacroPhmS_m'] = createExportWrapper('_Z11cat_gzmacroPhmS_m');
-var __Z21update_inputs_gzmacroP8gz_macroP11movie_inputPh = Module['__Z21update_inputs_gzmacroP8gz_macroP11movie_inputPh'] = createExportWrapper('_Z21update_inputs_gzmacroP8gz_macroP11movie_inputPh');
-var __Z21get_trim_gzmacro_sizePhmj = Module['__Z21get_trim_gzmacro_sizePhmj'] = createExportWrapper('_Z21get_trim_gzmacro_sizePhmj');
-var __Z27get_trim_gzmacro_size_bytesPhmj = Module['__Z27get_trim_gzmacro_size_bytesPhmj'] = createExportWrapper('_Z27get_trim_gzmacro_size_bytesPhmj');
-var __Z13slice_gzmacroPhmjj = Module['__Z13slice_gzmacroPhmjj'] = createExportWrapper('_Z13slice_gzmacroPhmjj');
 var _malloc = Module['_malloc'] = createExportWrapper('malloc');
 var _free = createExportWrapper('free');
 var ___getTypeName = createExportWrapper('__getTypeName');
@@ -3963,6 +3752,7 @@ var missingLibrarySymbols = [
   'registerInheritedInstance',
   'unregisterInheritedInstance',
   'enumReadValueFromPointer',
+  'validateThis',
   'emval_get_global',
   'emval_lookupTypes',
   'emval_addMethodCaller',
@@ -4152,7 +3942,6 @@ var unexportedSymbols = [
   'shallowCopyInternalPointer',
   'downcastPointer',
   'upcastPointer',
-  'validateThis',
   'char_0',
   'char_9',
   'makeLegalFunctionName',

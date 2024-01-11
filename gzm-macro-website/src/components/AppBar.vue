@@ -13,7 +13,6 @@
         <v-btn to="/inputs"><v-icon icon="mdi-gamepad"></v-icon>Inputs</v-btn>
         <v-btn to="/trim"><v-icon icon="mdi-content-cut"></v-icon>Trim</v-btn>
         <v-btn to="/slice"><v-icon icon="mdi-knife"></v-icon>Slice</v-btn>
-        <v-btn to="/test"><v-icon icon="mdi-knife"></v-icon>Test</v-btn>
       </div>
     </template>
   </v-app-bar>

@@ -23,7 +23,6 @@
 </template>
   
 <script lang="ts" setup>
-import { fileToBase64 } from 'file64';
 import { ref } from 'vue';
 import download from 'downloadjs';
 
@@ -32,18 +31,16 @@ const files2= ref<File[]>([]);
 const filename = ref<string>();
 
 const concatenate = async () => { 
-  const base64_1 = (await fileToBase64(files.value[0])).split('base64,')[1];
-  const base64_2 = (await fileToBase64(files2.value[0])).split('base64,')[1];
-  const response = (await fetch(import.meta.env.VITE_API_URL + '/GzMacro/cat', 
-  {
-    method: 'POST',
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ gzm1Base64: base64_1, gzm2Base64: base64_2 })
-  }));
-  const blob = await response.blob();
-  download(blob, filename.value ?? 'test.gzm', 'application/octet-stream');
+  const buffer = await files.value[0].arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  const buffer2 = await files2.value[0].arrayBuffer();
+  const bytes2 = new Uint8Array(buffer2);
+
+  const bytesVector = Module.cat_gzmacro(bytes, bytes.length, bytes2, bytes2.length);
+  const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
+  const blob = new Blob([newArray]);
+  download(blob, filename.value ?? 'test.gzm', 'application/octet-stream')
 }
 
 </script>

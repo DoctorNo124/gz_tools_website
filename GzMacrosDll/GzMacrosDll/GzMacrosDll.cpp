@@ -11,80 +11,90 @@ extern "C"
 
 #define EXTERN EMSCRIPTEN_KEEPALIVE
 
-class Test
-{
-public:
-    Test(int i, int j)
-    {
-        _i = i;
-        _j = j;
-    }
-    int _i;
-    int _j;
 
-    int getI() const
-    {
-        return _i;
-    }
-
-    int getJ() const
-    {
-        return _j;
-    }
-};
-
-EXTERN int
-set_gzmacro(uint8_t *data, struct gz_macro *gzm, size_t size)
-{
-    gzm_read(gzm, data, size);
-
-    return 0;
-}
-
-EXTERN int cat_gzmacro(uint8_t *gzmData1, size_t gzmDataSize1, uint8_t *gzmData2, size_t gzmDataSize2)
+std::vector<uint8_t> cat_gzmacro(std::string gzmData1, size_t gzmDataSize1, std::string gzmData2, size_t gzmDataSize2)
 {
 
     struct gz_macro gzm1;
     struct gz_macro gzm2;
     struct gz_macro outputGzm;
 
-    gzm_read(&gzm1, gzmData1, gzmDataSize1);
-    gzm_read(&gzm2, gzmData2, gzmDataSize2);
+    gzm_read(&gzm1, reinterpret_cast<uint8_t *>(&gzmData1[0]), gzmDataSize1);
+    gzm_read(&gzm2, reinterpret_cast<uint8_t *>(&gzmData2[0]), gzmDataSize2);
 
     gzm_cat_r(&outputGzm, &gzm1, &gzm2);
     struct file_output output;
     gzm_write(&outputGzm, &output);
-
-    return 0;
+    std::vector<uint8_t> vector;
+    for (int i = 0; i < output.n_bytes; i++)
+    {
+        vector.push_back(output.bytes[i]);
+    }
+    return vector;
 }
 
-EXTERN int update_inputs_gzmacro(struct gz_macro *gzm, struct movie_input *input, uint8_t *bytes)
-{
-    gzm_update_inputs(gzm, input);
-    struct file_output output;
-    gzm_write(gzm, &output);
-    return 0;
+static void set_input_wrappers(struct input_wrapper* inputs, int n_inputs, const emscripten::val &request_inputs) { 
+    for(int i = 0; i < n_inputs; i++) {
+        struct input_wrapper wrapper;
+        auto request_input = request_inputs[i];
+        auto request_input_buttons = request_input["inputButtons"];
+        wrapper.input_buttons = (struct input_button*)malloc(15*sizeof(input_button));
+        for(int j = 0; j < 15; j++) {
+            struct input_button button; 
+            auto request_input_button = request_input_buttons[j];
+            button.button_type = (uint16_t)(request_input_button["buttonType"].as<int>());
+            button.is_button_pressed = request_input_button["isButtonPressed"].as<bool>();
+            wrapper.input_buttons[j] = button;
+        }
+        wrapper.frame_index = request_input["frameIndex"].as<int>();
+        wrapper.x = request_input["x"].as<int8_t>();
+        wrapper.y = request_input["y"].as<int8_t>();
+        wrapper.pad_delta = request_input["padDelta"].as<uint16_t>();
+        inputs[i] = wrapper;
+    }
 }
 
-EXTERN int get_trim_gzmacro_size(uint8_t *data, size_t size, uint32_t end)
+std::vector<uint8_t> update_inputs_gzmacro(std::string data, int size, const emscripten::val &request)
 {
     struct gz_macro gzm;
 
-    gzm_read(&gzm, data, size);
+    gzm_read(&gzm, reinterpret_cast<uint8_t *>(&data[0]), size);
 
-    gzm_trim(&gzm, end);
+    struct update_inputs_request update_inputs_request;
 
+    auto request_add_inputs = request["addInputs"];
+    update_inputs_request.n_add_inputs = request_add_inputs["length"].as<int>();
+    update_inputs_request.add_inputs = (struct input_wrapper*)malloc(update_inputs_request.n_add_inputs*sizeof(struct input_wrapper));
+    set_input_wrappers(update_inputs_request.add_inputs, update_inputs_request.n_add_inputs, request_add_inputs);
+
+    auto request_modify_inputs = request["modifyInputs"];
+    update_inputs_request.n_modify_inputs = request_modify_inputs["length"].as<int>();
+    update_inputs_request.modify_inputs = (struct input_wrapper*)malloc(update_inputs_request.n_modify_inputs*sizeof(struct input_wrapper));
+    set_input_wrappers(update_inputs_request.modify_inputs, update_inputs_request.n_modify_inputs, request_modify_inputs);
+
+    auto request_delete_inputs = request["deleteInputsFrameIndexes"];
+    update_inputs_request.n_delete_inputs = request_delete_inputs["length"].as<int>();
+    update_inputs_request.delete_input_indexes = (int*)malloc(update_inputs_request.n_delete_inputs * sizeof(int));
+    for(int i = 0; i < update_inputs_request.n_delete_inputs; i++) {
+        update_inputs_request.delete_input_indexes[i] = request_delete_inputs[i].as<int>();
+    }
+
+    gzm_update_inputs(&gzm, &update_inputs_request);
     struct file_output output;
     gzm_write(&gzm, &output);
-
-    return output.n_bytes;
+    std::vector<uint8_t> vector;
+    for (int i = 0; i < output.n_bytes; i++)
+    {
+        vector.push_back(output.bytes[i]);
+    }
+    return vector;
 }
 
-std::vector<uint8_t> trim_gzmacro(uint8_t *data, int size, uint32_t end)
+std::vector<uint8_t> trim_gzmacro(std::string data, int size, uint32_t end)
 {
     struct gz_macro gzm;
 
-    gzm_read(&gzm, data, size);
+    gzm_read(&gzm, reinterpret_cast<uint8_t *>(&data[0]), size);
 
     gzm_trim(&gzm, end);
 
@@ -96,75 +106,33 @@ std::vector<uint8_t> trim_gzmacro(uint8_t *data, int size, uint32_t end)
         vector.push_back(output.bytes[i]);
     }
     return vector;
+
 }
 
-std::vector<uint8_t> trim_gzmacro(intptr_t data, int size, double end)
+std::vector<uint8_t> slice_gzmacro(std::string data, size_t size, uint32_t frame_start, uint32_t frame_end)
 {
-    return trim_gzmacro(reinterpret_cast<uint8_t *>(data), size, static_cast<uint32_t>(end));
-}
+    struct gz_macro gzm;
+    struct gz_macro outputGzm;
 
-int test_function(const movie_input *inputs)
-{
-    return 0;
-}
+    gzm_read(&gzm, reinterpret_cast<uint8_t *>(&data[0]), size);
 
-int test_function(intptr_t inputs)
-{
-    return test_function((movie_input *)(inputs));
-}
-
-int test_function2(const emscripten::val &arrayObject)
-{
-    int length = arrayObject["length"].as<int>();
-    auto testValue = arrayObject[0];
-    int j = testValue["j"].as<int>();
-    auto data = arrayObject.data();
-    return length;
+    gzm_slice(&outputGzm, &gzm, frame_start, frame_end);
+    struct file_output output;
+    gzm_write(&outputGzm, &output);
+    std::vector<uint8_t> vector;
+    for (int i = 0; i < output.n_bytes; i++)
+    {
+        vector.push_back(output.bytes[i]);
+    }
+    return vector;
 }
 
 EMSCRIPTEN_BINDINGS(new_file_output)
 {
     emscripten::register_vector<uint8_t>("vector<uint8_t>");
-    emscripten::function("trim_gzmacro", emscripten::select_overload<std::vector<uint8_t>(intptr_t, int, double)>(&trim_gzmacro));
-    emscripten::value_object<z64_controller_t>("z64_controller_t")
-        .field("pad", &z64_controller_t::pad)
-        .field("x", &z64_controller_t::x)
-        .field("y", &z64_controller_t::y);
-    emscripten::value_object<movie_input>("movie_seed")
-        .field("raw", &movie_input::raw)
-        .field("pad_delta", &movie_input::pad_delta);
-    emscripten::function("test_function", emscripten::select_overload<int(intptr_t)>(&test_function));
-    emscripten::class_<Test>("Test")
-        .constructor<int, int>()
-        .property("i", &Test::getI)
-        .property("j", &Test::getJ);
-    emscripten::function("test_function2", &test_function2);
+    emscripten::function("update_inputs_gzmacro", &update_inputs_gzmacro);
+    emscripten::function("slice_gzmacro", &slice_gzmacro);
+    emscripten::function("trim_gzmacro", &trim_gzmacro);
+    emscripten::function("cat_gzmacro", &cat_gzmacro);
 }
 
-EXTERN uint8_t *get_trim_gzmacro_size_bytes(uint8_t *data, size_t size, uint32_t end)
-{
-    struct gz_macro gzm;
-
-    gzm_read(&gzm, data, size);
-
-    gzm_trim(&gzm, end);
-
-    struct file_output output;
-    gzm_write(&gzm, &output);
-
-    return output.bytes;
-}
-
-EXTERN int slice_gzmacro(uint8_t *data, size_t size, uint32_t frame_start, uint32_t frame_end)
-{
-    struct gz_macro gzm;
-    struct gz_macro outputGzm;
-
-    gzm_read(&gzm, data, size);
-
-    gzm_slice(&outputGzm, &gzm, frame_start, frame_end);
-    struct file_output output;
-    gzm_write(&outputGzm, &output);
-
-    return 0;
-}

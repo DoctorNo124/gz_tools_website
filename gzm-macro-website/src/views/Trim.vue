@@ -27,10 +27,7 @@ const trimMacro = async () => {
     // eslint-disable-next-line
     const buffer = await files.value[0].arrayBuffer();
     const bytes = new Uint8Array(buffer);
-    var heapSpace = Module._malloc(bytes.length, bytes.BYTES_PER_ELEMENT);
-    console.log(bytes.length);
-    Module.HEAP8.set(bytes, heapSpace);
-    const bytesVector = Module.trim_gzmacro(heapSpace, bytes.length, Number(end.value));
+    const bytesVector = Module.trim_gzmacro(bytes, bytes.length, Number(end.value));
     const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
     const blob = new Blob([newArray]);
     download(blob, filename.value ?? 'test.gzm', 'application/octet-stream')
