@@ -4,51 +4,25 @@
             <tr v-for="(item, index) in arrayChunkedInputs[page - 1]">
                 <td><v-btn @click="addItem(item, getActualIndex(index))"><v-icon icon="mdi-plus"></v-icon></v-btn></td>
                 <td>{{ getActualIndex(index) }}</td>
-                <template v-if="item.isEditable">
-                    <td><v-text-field type="number" v-model="item.x"></v-text-field> </td>
-                    <td><v-text-field type="number" v-model="item.y"></v-text-field> </td>
-                    <td><v-text-field :rules="[(value: string) => isNaN(Number(value)) ? 'Value must be valid bit string': '']" v-model="item.bitPadDelta"></v-text-field></td>
-                </template>
-                <template v-else>
-                    <td> {{ item.x }}</td>
-                    <td> {{ item.y }}</td>
-                    <td> {{ item.padDelta }}</td>
-                </template>
+                <td contenteditable="true" @input="event => editItemX(item, getActualIndex(index), event)"> {{ item.xStr }}</td>
+                <td contenteditable="true" @input="event => editItemY(item, getActualIndex(index), event)"> {{ item.yStr }}</td>
+                <td contenteditable="true" @input="event => editItemPadDelta(item, getActualIndex(index), event)"> {{ item.padDeltaStr }}</td>
                 <td v-for="(button) in item.inputButtons" :key="item.frameIndex + '_' + button.buttonType">
-                    <v-checkbox v-model="button.isButtonPressed" :disabled="!item.isEditable"></v-checkbox>
+                    <v-checkbox v-model="button.isButtonPressed" @update:modelValue = "event => editItemCheckbox(item, getActualIndex(index))"></v-checkbox>
                 </td>
                 <td v-if="showActions">
-                    <template v-if="item.isEditable">
-                        <v-icon
-                        size="small"
-                        class="me-2"
-                        @click="saveItem(item, getActualIndex(index))"
-                        >
-                            mdi-content-save
-                        </v-icon>
-                        <v-icon
-                        size="small"
-                        class="me-2"
-                        @click="cancelItem(item, getActualIndex(index))"
-                        >
-                            mdi-cancel
-                        </v-icon>
-                    </template>
-                    <template v-else>
-                        <v-icon
-                        size="small"
-                        class="me-2"
-                        @click="editItem(item)"
-                        >
-                            mdi-pencil
-                        </v-icon>
                         <v-icon
                             size="small"
                             @click="deleteItem(item, getActualIndex(index))"
                         >
                             mdi-delete
-                            </v-icon>
-                    </template>
+                        </v-icon>
+                        <v-icon
+                            size="small"
+                            @click="cloneItem(item, getActualIndex(index))"
+                        >
+                            mdi-content-copy
+                        </v-icon>
                 </td>
             </tr>
         </template>
@@ -130,7 +104,7 @@
 
 <script lang="ts" setup>
 import { InputWrapper } from '@/models';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const page = ref(1);
 const itemsPerPage = ref(10)
@@ -144,11 +118,7 @@ const props = defineProps<{
     showActions?: boolean,
 }>();
 
-const emits = defineEmits(["edit-item", "delete-item", "add-item", "save-item", "cancel-item"]);
-
-const editItem = (item: InputWrapper) => { 
-    emits("edit-item", item);
-}
+const emits = defineEmits(["edit-item", "delete-item", "add-item", "clone-item"]);
 
 const deleteItem = (item: InputWrapper, index: number) => { 
     emits("delete-item", item, index);
@@ -158,13 +128,30 @@ const addItem = (item: InputWrapper, index: number) => {
     emits("add-item", item, index);
 }
 
-const saveItem = (item: InputWrapper, index: number) => { 
-    emits("save-item", item, index);
+const editItemX = (item: InputWrapper, index: number, event: Event) => { 
+    item.xStr = (event.target as HTMLTableCellElement).innerHTML;
+    emits("edit-item", item, index);
 }
 
-const cancelItem = (item: InputWrapper, index: number) => { 
-    emits("cancel-item", item, index);
+const editItemY = (item: InputWrapper, index: number, event: Event) => { 
+    item.yStr = (event.target as HTMLTableCellElement).innerHTML;
+    emits("edit-item", item, index);
 }
+
+const editItemPadDelta = (item: InputWrapper, index: number, event: Event) => { 
+    item.padDeltaStr = (event.target as HTMLTableCellElement).innerHTML;
+    emits("edit-item", item, index);
+}
+
+const cloneItem = (item: InputWrapper, index: number) => { 
+    emits("clone-item", item, index);
+}
+
+const editItemCheckbox = (item: InputWrapper, index: number) => { 
+    emits("edit-item", item, index);
+}
+
+
 
 const getActualIndex = (index: number): number => { 
     return (page.value - 1)*itemsPerPage.value + index 

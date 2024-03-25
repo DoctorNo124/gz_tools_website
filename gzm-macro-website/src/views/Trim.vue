@@ -11,7 +11,7 @@
         <v-text-field type="number" label="End" v-model="end"></v-text-field>
         <v-text-field v-model="filename" label="Output Filename" >
         </v-text-field>
-        <v-btn @click="trimMacro" :disabled="files.length === 0 || !end || !filename || filename === ''">Trim Macro</v-btn>
+        <v-btn @click="trimMacro" :disabled="files.length === 0 || !end">Trim Macro</v-btn>
     </v-container>
 </template>
   
@@ -21,7 +21,7 @@ import download from 'downloadjs';
 
 const files = ref<File[]>([]);
 const end = ref<number>();
-const filename = ref<string>();
+const filename = ref<string>('macro');
 
 const trimMacro = async () => { 
     // eslint-disable-next-line
@@ -30,7 +30,7 @@ const trimMacro = async () => {
     const bytesVector = Module.trim_gzmacro(bytes, bytes.length, Number(end.value));
     const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
     const blob = new Blob([newArray]);
-    download(blob, filename.value ?? 'test.gzm', 'application/octet-stream')
+    download(blob, filename.value !== '' ? (filename.value + '.gzm') : 'macro.gzm', 'application/octet-stream')
 };
 
 </script>

@@ -57,15 +57,50 @@ export const getBytesAsGZM = (bytes: DataView): GzMacro => {
   const totalSeeds = bytes.getUint32(N_SEED_ADDR);
   const seedsAddr = getSeedsAddr(totalInputs);
   const metaAddr = getMetaAddr(seedsAddr, totalSeeds);
-  const nOcaInput = bytes.getUint32(metaAddr + N_OCA_INPUT_OFFSET);
-  const nOcaSync = bytes.getUint32(metaAddr + N_OCA_SYNC_OFFSET);
-  const nRoomLoad = bytes.getUint32(metaAddr + N_ROOM_LOAD_OFFSET);
-
-  const ocaInputAddr = metaAddr + OCA_INPUT_OFFSET;
-  const ocaSyncAddr = getOcaSyncAddr(ocaInputAddr, nOcaInput);
-  const roomLoadAddr = getRoomLoadAddr(ocaSyncAddr, nOcaSync);
-
-  const rerecordAddr = getRerecordAddr(roomLoadAddr, nRoomLoad);
+  let nOcaInput = 0;
+  let nOcaSync = 0;
+  let nRoomLoad = 0;
+  const ocaInputs = [];
+  const ocaSyncs = [];
+  const roomLoads = [];
+  let rerecords = 0;
+  let lastRecordedFrame = 0;
+  try { 
+    nOcaInput = bytes.getUint32(metaAddr + N_OCA_INPUT_OFFSET);
+    nOcaSync = bytes.getUint32(metaAddr + N_OCA_SYNC_OFFSET);
+    nRoomLoad = bytes.getUint32(metaAddr + N_ROOM_LOAD_OFFSET);
+    const ocaInputAddr = metaAddr + OCA_INPUT_OFFSET;
+    const ocaSyncAddr = getOcaSyncAddr(ocaInputAddr, nOcaInput);
+    const roomLoadAddr = getRoomLoadAddr(ocaSyncAddr, nOcaSync);
+    for (let i = ocaInputAddr; i < ocaSyncAddr; i += OCA_INPUT_LENGTH) { 
+      ocaInputs.push({ 
+        frame_idx: bytes.getInt32(i), 
+        pad: bytes.getUint16(i + 4), 
+        adjusted_x: bytes.getInt8(i + 6), 
+        adjusted_y: bytes.getInt8(i + 7)
+      });
+    }
+    for (let i = ocaSyncAddr; i < roomLoadAddr; i += OCA_SYNC_LENGTH) { 
+      ocaSyncs.push({ 
+        frame_idx: bytes.getInt32(i), 
+        audio_frames: bytes.getInt32(i + 4), 
+      });
+    }
+    for (let i = roomLoadAddr; i < (roomLoadAddr + nRoomLoad * ROOM_LOAD_LENGTH); i += ROOM_LOAD_LENGTH) { 
+      roomLoads.push({ 
+        frame_idx: bytes.getInt32(i), 
+      });
+    }  
+    const rerecordsAddr = getRerecordAddr(roomLoadAddr, nRoomLoad);
+    rerecords = bytes.getUint32(rerecordsAddr);
+  }
+  catch(error) { 
+    try { 
+      rerecords = bytes.getUint32(metaAddr);
+      lastRecordedFrame = bytes.getUint32(metaAddr + LAST_RECORDED_FRAME_OFFSET);
+    }
+    catch(error){}
+  }
 
   const startingInput = {
       pad: bytes.getUint16(STARTING_INPUT_ADDR),
@@ -78,8 +113,8 @@ export const getBytesAsGZM = (bytes: DataView): GzMacro => {
     inputs.push({
       raw: { 
         pad: bytes.getUint16(i),
-        x: bytes.getUint8(i + 2),
-        y: bytes.getUint8(i + 3),
+        x: bytes.getInt8(i + 2),
+        y: bytes.getInt8(i + 3),
       },
       pad_delta: bytes.getUint16(i + 4)
     });
@@ -94,30 +129,6 @@ export const getBytesAsGZM = (bytes: DataView): GzMacro => {
     });
   }
 
-  const ocaInputs = [];
-  for (let i = ocaInputAddr; i < ocaSyncAddr; i += OCA_INPUT_LENGTH) { 
-    ocaInputs.push({ 
-      frame_idx: bytes.getInt32(i), 
-      pad: bytes.getUint16(i + 4), 
-      adjusted_x: bytes.getInt8(i + 6), 
-      adjusted_y: bytes.getInt8(i + 7)
-    });
-  }
-
-  const ocaSyncs = [];
-  for (let i = ocaSyncAddr; i < roomLoadAddr; i += OCA_SYNC_LENGTH) { 
-    ocaSyncs.push({ 
-      frame_idx: bytes.getInt32(i), 
-      audio_frames: bytes.getInt32(i + 4), 
-    });
-  }
-
-  const roomLoads = [];
-  for (let i = roomLoadAddr; i < (roomLoadAddr + nRoomLoad * ROOM_LOAD_LENGTH); i += ROOM_LOAD_LENGTH) { 
-    roomLoads.push({ 
-      frame_idx: bytes.getInt32(i), 
-    });
-  }
 
   return {
     n_input: totalInputs,
@@ -131,8 +142,8 @@ export const getBytesAsGZM = (bytes: DataView): GzMacro => {
     oca_input: ocaInputs, 
     oca_sync: ocaSyncs, 
     room_load: roomLoads, 
-    rerecords: bytes.getUint32(rerecordAddr),
-    last_recorded_frame: bytes.getUint32(rerecordAddr + LAST_RECORDED_FRAME_OFFSET)
+    rerecords: rerecords,
+    last_recorded_frame: lastRecordedFrame
   };
 };
 

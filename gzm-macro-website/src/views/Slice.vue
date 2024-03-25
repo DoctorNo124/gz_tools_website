@@ -12,7 +12,7 @@
         <v-text-field type="number" label="Frame End" v-model="frameEnd"></v-text-field>
         <v-text-field v-model="filename" label="Output Filename" >
         </v-text-field>
-        <v-btn @click="sliceMacro" :disabled="files.length === 0 || !frameStart || !frameEnd || !filename || filename === ''">Slice Macro</v-btn>
+        <v-btn @click="sliceMacro" :disabled="files.length === 0 || !frameStart || !frameEnd">Slice Macro</v-btn>
     </v-container>
 </template>
   
@@ -23,7 +23,7 @@ import download from 'downloadjs';
 const files = ref<File[]>([]);
 const frameStart = ref<number>();
 const frameEnd = ref<number>();
-const filename = ref<string>();
+const filename = ref<string>('macro');
 
 const sliceMacro = async () => { 
     const buffer = await files.value[0].arrayBuffer();
@@ -31,7 +31,7 @@ const sliceMacro = async () => {
     const bytesVector = Module.slice_gzmacro(bytes, bytes.length, Number(frameStart.value), Number(frameEnd.value));
     const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
     const blob = new Blob([newArray]);
-    download(blob, filename.value ?? 'test.gzm', 'application/octet-stream');
+    download(blob, filename.value !== '' ? (filename.value + '.gzm') : 'macro.gzm', 'application/octet-stream');
 };
 
 </script>

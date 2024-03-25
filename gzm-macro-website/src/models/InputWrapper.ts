@@ -5,12 +5,13 @@ export default interface InputWrapper {
     frameIndex?: number; 
     x: number; 
     y: number;
+    xStr: string;
+    yStr: string;
+    padDeltaStr: string;
     isDelete: boolean;
     isAdd: boolean;
     isModify: boolean;
     padDelta: number;
     bitPadDelta?: string;
-    isEditable: boolean;
-    isEditingAdd?: boolean;
     id: string;
 }

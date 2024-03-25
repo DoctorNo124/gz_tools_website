@@ -18,7 +18,7 @@
       </v-file-input>
       <v-text-field v-model="filename" label="Output Filename" >
       </v-text-field>
-      <v-btn @click="concatenate" :disabled="files.length === 0 || files2.length === 0 || !filename || filename === ''">Concatenate</v-btn>
+      <v-btn @click="concatenate" :disabled="files.length === 0 || files2.length === 0">Concatenate</v-btn>
   </v-container>
 </template>
   
@@ -28,7 +28,7 @@ import download from 'downloadjs';
 
 const files = ref<File[]>([]);
 const files2= ref<File[]>([]);
-const filename = ref<string>();
+const filename = ref<string>('macro');
 
 const concatenate = async () => { 
   const buffer = await files.value[0].arrayBuffer();
@@ -40,7 +40,7 @@ const concatenate = async () => {
   const bytesVector = Module.cat_gzmacro(bytes, bytes.length, bytes2, bytes2.length);
   const newArray = new Uint8Array(bytesVector.size()).fill(0).map((_, id) => bytesVector.get(id));
   const blob = new Blob([newArray]);
-  download(blob, filename.value ?? 'test.gzm', 'application/octet-stream')
+  download(blob, filename.value !== '' ? (filename.value + '.gzm') : 'macro.gzm', 'application/octet-stream')
 }
 
 </script>
